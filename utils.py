@@ -24,9 +24,9 @@ def show_images(images,figsize,dpi,grid):
         ax1.imshow(images[v],  cmap='gray')
     plt.show()
     
-def BGR_to_RBG(images):
-    RBG_images = []
+def BGR_to_RGB(images):
+    RGB_images = []
     for image in images:
-        RBG_images.append(image[...,::-1])
-    return RBG_images
+        RGB_images.append(image[...,::-1])
+    return RGB_images
     
