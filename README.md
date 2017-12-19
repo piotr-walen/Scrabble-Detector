@@ -1,2 +1,0 @@
-# Scrabble-Detector
-Scrabble-Detector

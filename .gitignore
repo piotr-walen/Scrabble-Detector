@@ -176,3 +176,8 @@ venv.bak/
 .mypy_cache/
 
 # End of https://www.gitignore.io/api/python,pycharm,jupyternotebook
+
+data/
+models/
+old/
+raw_img/
