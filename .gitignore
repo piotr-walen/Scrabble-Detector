@@ -181,9 +181,7 @@ data/
 models/
 old/
 raw_img/
-
 .gradle/
-app/
 build.gradle
 gradle.properties
 gradle/
@@ -191,6 +189,16 @@ gradlew
 gradlew.bat
 local.properties
 settings.gradle
+
+
+app/src/test/
+app/src/androidTest
+
+app/src/main/res/mipmap-hdpi/
+app/src/main/res/mipmap-mdpi/
+app/src/main/res/mipmap-xhdpi/
+app/src/main/res/mipmap-xxhdpi/
+app/src/main/res/mipmap-xxxhdpi/
 
 
 # Created by https://www.gitignore.io/api/java,android,androidstudio
