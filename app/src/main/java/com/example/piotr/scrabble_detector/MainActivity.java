@@ -10,7 +10,7 @@ import android.widget.Button;
 import android.widget.ImageView;
 
 
-public class CaptureImage extends Activity {
+public class MainActivity extends Activity {
 
     ImageView imageView;
 
@@ -40,4 +40,11 @@ public class CaptureImage extends Activity {
             imageView.setImageBitmap(bitmap);
         }
     }
+
+
+
+
+
+
+
 }

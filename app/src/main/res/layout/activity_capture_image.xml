@@ -10,7 +10,7 @@
     android:paddingTop="16dp"
     android:orientation="vertical"
     android:weightSum="10"
-    tools:context="com.example.piotr.scrabble_detector.CaptureImage">
+    tools:context="com.example.piotr.scrabble_detector.MainActivity">
 
 
     <ImageView
