@@ -199,6 +199,8 @@ app/src/main/res/mipmap-mdpi/
 app/src/main/res/mipmap-xhdpi/
 app/src/main/res/mipmap-xxhdpi/
 app/src/main/res/mipmap-xxxhdpi/
+.idea/kotlinc.xml
+.idea/templateLanguages.xml
 
 
 # Created by https://www.gitignore.io/api/java,android,androidstudio
