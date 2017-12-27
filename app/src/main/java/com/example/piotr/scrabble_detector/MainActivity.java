@@ -14,13 +14,18 @@ import android.widget.ImageView;
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
+import org.opencv.android.Utils;
+import org.opencv.core.CvException;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.imgproc.Imgproc;
 
 
 public class MainActivity extends Activity {
 
     ImageView imageView;
     Mat imageMat;
+    Bitmap bitmap;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -44,7 +49,7 @@ public class MainActivity extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (resultCode == RESULT_OK) {
-            Bitmap bitmap = (Bitmap) data.getExtras().get("data");
+            bitmap = (Bitmap) data.getExtras().get("data");
             imageView.setImageBitmap(bitmap);
 
             if (!OpenCVLoader.initDebug()) {
@@ -55,8 +60,8 @@ public class MainActivity extends Activity {
                 mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
             }
 
-        }
 
+        }
     }
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
@@ -66,7 +71,19 @@ public class MainActivity extends Activity {
                 case LoaderCallbackInterface.SUCCESS:
                 {
                     Log.i("OpenCV", "OpenCV loaded successfully");
-                    imageMat=new Mat();
+                    imageMat=new Mat(bitmap.getWidth(),bitmap.getHeight(), CvType.CV_8UC1);
+                    Utils.bitmapToMat(bitmap, imageMat);
+                    try {
+                        Imgproc.cvtColor(imageMat,imageMat,Imgproc.COLOR_RGB2GRAY);
+                        Bitmap output_bitmap = Bitmap.createBitmap(imageMat.cols(), imageMat.rows(), Bitmap.Config.RGB_565);
+                        Utils.matToBitmap(imageMat, output_bitmap);
+                        imageView.setImageBitmap(output_bitmap);
+
+                    } catch (CvException e){
+                        Log.d("Exception",e.getMessage());
+                    }
+
+
                 } break;
                 default:
                 {
