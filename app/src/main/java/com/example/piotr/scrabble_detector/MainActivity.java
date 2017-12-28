@@ -18,6 +18,7 @@ import org.opencv.android.Utils;
 import org.opencv.core.CvException;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
 
@@ -75,6 +76,9 @@ public class MainActivity extends Activity {
                     Utils.bitmapToMat(bitmap, imageMat);
                     try {
                         Imgproc.cvtColor(imageMat,imageMat,Imgproc.COLOR_RGB2GRAY);
+                        Imgproc.blur(imageMat,imageMat, new Size(7,7));
+                        //Imgproc.Canny(imageMat,imageMat,50,150,3,false);
+
                         Bitmap output_bitmap = Bitmap.createBitmap(imageMat.cols(), imageMat.rows(), Bitmap.Config.RGB_565);
                         Utils.matToBitmap(imageMat, output_bitmap);
                         imageView.setImageBitmap(output_bitmap);
@@ -82,8 +86,6 @@ public class MainActivity extends Activity {
                     } catch (CvException e){
                         Log.d("Exception",e.getMessage());
                     }
-
-
                 } break;
                 default:
                 {
