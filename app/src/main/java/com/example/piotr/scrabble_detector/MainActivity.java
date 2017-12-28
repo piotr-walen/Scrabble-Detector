@@ -28,7 +28,6 @@ public class MainActivity extends Activity {
     ImageView imageView;
     Mat imageMat;
     Bitmap bitmap;
-    boolean isImageFitToScreen;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -81,6 +80,12 @@ public class MainActivity extends Activity {
                         Imgproc.cvtColor(imageMat,imageMat,Imgproc.COLOR_RGB2GRAY);
                         Imgproc.blur(imageMat,imageMat, new Size(7,7));
                         Imgproc.Canny(imageMat,imageMat,50.0,150.0);
+                        int dilation_size = 5;
+                        Mat element = Imgproc.getStructuringElement(Imgproc.MORPH_RECT,
+                                new  Size(2*dilation_size + 1, 2*dilation_size+1));
+                        Imgproc.dilate(imageMat,imageMat,element);
+
+
 
                         Bitmap output_bitmap = Bitmap.createBitmap(imageMat.cols(), imageMat.rows(), Bitmap.Config.RGB_565);
                         Utils.matToBitmap(imageMat, output_bitmap);
