@@ -22,6 +22,7 @@ import org.opencv.core.CvException;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
+import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
@@ -129,31 +130,12 @@ public class MainActivity extends Activity {
                 case LoaderCallbackInterface.SUCCESS:
                 {
                     Log.i("OpenCV", "OpenCV loaded successfully");
-
-                    imageMat=new Mat(bitmap.getWidth(),bitmap.getHeight(), CvType.CV_8UC1);
-                    Utils.bitmapToMat(bitmap, imageMat);
-
                     try {
-                        Imgproc.cvtColor(imageMat,imageMat,Imgproc.COLOR_RGB2GRAY);
-                        Imgproc.blur(imageMat,imageMat, new Size(7,7));
-                        Imgproc.Canny(imageMat,imageMat,10.0,100.0);
-                        Mat element = Imgproc.getStructuringElement(Imgproc.MORPH_RECT,
-                                new  Size(5, 5));
-                        Imgproc.dilate(imageMat,imageMat,element);
-
-                        List<MatOfPoint> contours = new ArrayList<>();
-                        Imgproc.findContours(imageMat, contours, new Mat(),
-                                Imgproc.RETR_LIST,Imgproc.CHAIN_APPROX_SIMPLE);
-                        Imgproc.drawContours(imageMat, contours, 0,
-                                new Scalar(0,0,255),3);
-
-                        Bitmap output_bitmap = Bitmap.createBitmap(imageMat.cols(), imageMat.rows(), Bitmap.Config.RGB_565);
-                        Utils.matToBitmap(imageMat, output_bitmap);
-                        imageView.setImageBitmap(output_bitmap);
-
+                        imageProcessing();
                     } catch (CvException e){
                         Log.d("Exception",e.getMessage());
                     }
+
                 } break;
                 default:
                 {
@@ -163,5 +145,36 @@ public class MainActivity extends Activity {
         }
     };
 
+
+    private void imageProcessing(){
+        imageMat=new Mat(bitmap.getWidth(),bitmap.getHeight(), CvType.CV_8UC1);
+        Utils.bitmapToMat(bitmap, imageMat);
+
+        Imgproc.cvtColor(imageMat,imageMat,Imgproc.COLOR_RGB2GRAY);
+        Imgproc.blur(imageMat,imageMat, new Size(7,7));
+        Imgproc.Canny(imageMat,imageMat,10.0,100.0);
+        Mat element = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5, 5));
+        Imgproc.dilate(imageMat,imageMat,element);
+        List<MatOfPoint> contours = new ArrayList<>();
+        Imgproc.findContours(imageMat, contours, new Mat(), Imgproc.RETR_LIST,Imgproc.CHAIN_APPROX_SIMPLE);
+        Imgproc.drawContours(imageMat, contours, 0, new Scalar(0,0,255),3);
+
+        MatOfPoint contour = contours.get(0);
+        MatOfPoint2f contour2f = new MatOfPoint2f();
+        contour.convertTo(contour2f,CvType.CV_32FC2);
+        double epsilon = 0.01 * Imgproc.arcLength(contour2f,true);
+        MatOfPoint2f approxContour2f = new MatOfPoint2f();
+        Imgproc.approxPolyDP(contour2f,approxContour2f,epsilon,true);
+        MatOfPoint approxContour = new MatOfPoint();
+        approxContour2f.convertTo(approxContour,CvType.CV_32S);
+        List<MatOfPoint> approxContours = new ArrayList<>();
+        approxContours.add(approxContour);
+        Imgproc.drawContours(imageMat, approxContours, 0, new Scalar(0,0,255),3);
+
+
+        Bitmap output_bitmap = Bitmap.createBitmap(imageMat.cols(), imageMat.rows(), Bitmap.Config.RGB_565);
+        Utils.matToBitmap(imageMat, output_bitmap);
+        imageView.setImageBitmap(output_bitmap);
+    }
 
 }
