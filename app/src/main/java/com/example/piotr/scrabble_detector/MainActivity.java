@@ -10,6 +10,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
@@ -27,6 +28,7 @@ public class MainActivity extends Activity {
     ImageView imageView;
     Mat imageMat;
     Bitmap bitmap;
+    boolean isImageFitToScreen;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -34,7 +36,6 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_capture_image);
 
         Button btnCamera = findViewById(R.id.button);
-        imageView = findViewById(R.id.imageView);
         btnCamera.setOnClickListener(new View.OnClickListener() {
 
             @Override
@@ -43,6 +44,8 @@ public class MainActivity extends Activity {
                 startActivityForResult(intent, 0);
             }
         });
+
+        imageView = findViewById(R.id.imageView);
     }
 
     @Override

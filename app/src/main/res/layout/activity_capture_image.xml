@@ -4,29 +4,28 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:paddingLeft="16dp"
-    android:paddingRight="16dp"
-    android:paddingBottom="16dp"
-    android:paddingTop="16dp"
-    android:orientation="vertical"
+    android:padding="16dp"
     android:weightSum="10"
+    android:orientation="vertical"
     tools:context="com.example.piotr.scrabble_detector.MainActivity">
 
-
     <ImageView
+        android:layout_weight="10"
         android:id="@+id/imageView"
-        android:layout_width="fill_parent"
-        android:layout_height="355dp"
-        android:src="@drawable/ic_launcher_background" />
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:adjustViewBounds="true"
 
+        android:scaleType="fitXY"
+        android:src="@drawable/ic_launcher_background" />
     <Button
         android:id="@+id/button"
+        android:layout_weight="0"
+        android:layout_gravity="bottom"
+        android:layout_height="40dp"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="32dp"
         android:text="capture image"
         android:background="@android:color/holo_red_dark"
         android:textColor="@android:color/white"/>
-
-
 </LinearLayout>
