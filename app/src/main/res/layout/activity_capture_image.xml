@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp"
+    android:padding="3dp"
     android:weightSum="10"
     android:orientation="vertical"
     tools:context="com.example.piotr.scrabble_detector.MainActivity">
@@ -16,7 +16,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
         android:adjustViewBounds="true"
-
+        android:layout_marginBottom="3dp"
         android:scaleType="fitXY"
         android:src="@drawable/ic_launcher_background" />
     <Button

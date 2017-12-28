@@ -3,7 +3,9 @@ package com.example.piotr.scrabble_detector;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.MediaStore;
 
 import android.util.Log;
@@ -24,7 +26,11 @@ import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
+import java.io.File;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 
@@ -33,6 +39,9 @@ public class MainActivity extends Activity {
     ImageView imageView;
     Mat imageMat;
     Bitmap bitmap;
+
+    static final int REQUEST_IMAGE_CAPTURE = 1;
+    private String mCurrentPhotoPath;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -44,29 +53,72 @@ public class MainActivity extends Activity {
 
             @Override
             public void onClick(View view) {
-                Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                startActivityForResult(intent, 0);
+//                Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+//                startActivityForResult(intent, 0);
+
+                Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                if (cameraIntent.resolveActivity(getPackageManager()) != null) {
+                    // Create the File where the photo should go
+                    File photoFile = null;
+                    try {
+                        photoFile = createImageFile();
+                    } catch (IOException ex) {
+                        // Error occurred while creating the File
+                        Log.i("IO", "IOException");
+                    }
+                    // Continue only if the File was successfully created
+                    if (photoFile != null) {
+                        cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(photoFile));
+                        startActivityForResult(cameraIntent, REQUEST_IMAGE_CAPTURE);
+                    }
+                }
+
+
             }
         });
 
         imageView = findViewById(R.id.imageView);
     }
 
+
+    private File createImageFile() throws IOException {
+        // Create an image file name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        String imageFileName = "JPEG_" + timeStamp + "_";
+        File storageDir = Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_PICTURES);
+        File image = File.createTempFile(
+                imageFileName,  // prefix
+                ".jpg",         // suffix
+                storageDir      // directory
+        );
+
+        // Save a file: path for use with ACTION_VIEW intents
+        mCurrentPhotoPath = "file:" + image.getAbsolutePath();
+        return image;
+    }
+
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (resultCode == RESULT_OK) {
-            bitmap = (Bitmap) data.getExtras().get("data");
-            if (!OpenCVLoader.initDebug()) {
-                Log.d("OpenCV", "Internal OpenCV library not found. Using OpenCV Manager for initialization");
-                OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);
-            } else {
-                Log.d("OpenCV", "OpenCV library found inside package. Using it!");
-                mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
+
+        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+            try {
+                bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), Uri.parse(mCurrentPhotoPath));
+
+                if (!OpenCVLoader.initDebug()) {
+                    Log.d("OpenCV", "Internal OpenCV library not found. Using OpenCV Manager for initialization");
+                    OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);
+                } else {
+                    Log.d("OpenCV", "OpenCV library found inside package. Using it!");
+                    mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
+                }
+
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-
-
         }
     }
 
@@ -77,8 +129,10 @@ public class MainActivity extends Activity {
                 case LoaderCallbackInterface.SUCCESS:
                 {
                     Log.i("OpenCV", "OpenCV loaded successfully");
+
                     imageMat=new Mat(bitmap.getWidth(),bitmap.getHeight(), CvType.CV_8UC1);
                     Utils.bitmapToMat(bitmap, imageMat);
+
                     try {
                         Imgproc.cvtColor(imageMat,imageMat,Imgproc.COLOR_RGB2GRAY);
                         Imgproc.blur(imageMat,imageMat, new Size(7,7));
