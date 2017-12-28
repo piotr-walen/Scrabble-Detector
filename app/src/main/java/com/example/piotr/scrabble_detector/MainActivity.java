@@ -77,7 +77,7 @@ public class MainActivity extends Activity {
                     try {
                         Imgproc.cvtColor(imageMat,imageMat,Imgproc.COLOR_RGB2GRAY);
                         Imgproc.blur(imageMat,imageMat, new Size(7,7));
-                        //Imgproc.Canny(imageMat,imageMat,50,150,3,false);
+                        Imgproc.Canny(imageMat,imageMat,50.0,150.0);
 
                         Bitmap output_bitmap = Bitmap.createBitmap(imageMat.cols(), imageMat.rows(), Bitmap.Config.RGB_565);
                         Utils.matToBitmap(imageMat, output_bitmap);

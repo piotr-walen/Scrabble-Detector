@@ -190,8 +190,7 @@ gradlew.bat
 local.properties
 settings.gradle
 import-summary.txt
-openCVLibrary331/
-
+openCVLibrary300/
 app/src/test/
 app/src/androidTest
 
