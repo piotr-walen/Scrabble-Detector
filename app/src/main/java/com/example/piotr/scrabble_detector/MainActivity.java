@@ -19,8 +19,13 @@ import org.opencv.android.Utils;
 import org.opencv.core.CvException;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfPoint;
+import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class MainActivity extends Activity {
@@ -53,8 +58,6 @@ public class MainActivity extends Activity {
 
         if (resultCode == RESULT_OK) {
             bitmap = (Bitmap) data.getExtras().get("data");
-            imageView.setImageBitmap(bitmap);
-
             if (!OpenCVLoader.initDebug()) {
                 Log.d("OpenCV", "Internal OpenCV library not found. Using OpenCV Manager for initialization");
                 OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);
@@ -79,13 +82,16 @@ public class MainActivity extends Activity {
                     try {
                         Imgproc.cvtColor(imageMat,imageMat,Imgproc.COLOR_RGB2GRAY);
                         Imgproc.blur(imageMat,imageMat, new Size(7,7));
-                        Imgproc.Canny(imageMat,imageMat,50.0,150.0);
-                        int dilation_size = 5;
+                        Imgproc.Canny(imageMat,imageMat,10.0,100.0);
                         Mat element = Imgproc.getStructuringElement(Imgproc.MORPH_RECT,
-                                new  Size(2*dilation_size + 1, 2*dilation_size+1));
+                                new  Size(5, 5));
                         Imgproc.dilate(imageMat,imageMat,element);
 
-
+                        List<MatOfPoint> contours = new ArrayList<>();
+                        Imgproc.findContours(imageMat, contours, new Mat(),
+                                Imgproc.RETR_LIST,Imgproc.CHAIN_APPROX_SIMPLE);
+                        Imgproc.drawContours(imageMat, contours, 0,
+                                new Scalar(0,0,255),3);
 
                         Bitmap output_bitmap = Bitmap.createBitmap(imageMat.cols(), imageMat.rows(), Bitmap.Config.RGB_565);
                         Utils.matToBitmap(imageMat, output_bitmap);
