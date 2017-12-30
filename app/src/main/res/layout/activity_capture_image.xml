@@ -20,12 +20,24 @@
         android:scaleType="fitXY"
         android:src="@drawable/ic_launcher_background" />
     <Button
-        android:id="@+id/button"
+        android:id="@+id/camera_button"
         android:layout_weight="0"
         android:layout_gravity="bottom"
         android:layout_height="40dp"
         android:layout_width="match_parent"
         android:text="capture image"
         android:background="@android:color/holo_red_dark"
+        android:textColor="@android:color/white"
+        android:layout_marginBottom="3dp"/>
+    <Button
+        android:id="@+id/gallery_button"
+        android:layout_weight="0"
+        android:layout_gravity="bottom"
+        android:layout_height="40dp"
+        android:layout_width="match_parent"
+        android:text="Select from gallery"
+        android:background="@android:color/holo_red_dark"
         android:textColor="@android:color/white"/>
+
+
 </LinearLayout>

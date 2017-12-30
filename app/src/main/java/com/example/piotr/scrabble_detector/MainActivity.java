@@ -2,7 +2,9 @@ package com.example.piotr.scrabble_detector;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -39,12 +41,14 @@ public class MainActivity extends Activity {
     Mat imageMat;
     Bitmap bitmap;
     static final int REQUEST_IMAGE_CAPTURE = 1;
+    private static int RESULT_LOAD_IMAGE = 2;
+
     private String mCurrentPhotoPath;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_capture_image);
-        Button btnCamera = findViewById(R.id.button);
+        Button btnCamera = findViewById(R.id.camera_button);
         btnCamera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -68,9 +72,54 @@ public class MainActivity extends Activity {
                 }
             }
         });
+
+        Button btnGallery = findViewById(R.id.gallery_button);
+        btnGallery.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent i = new Intent(
+                        Intent.ACTION_PICK,
+                        android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+
+                startActivityForResult(i, RESULT_LOAD_IMAGE);
+            }
+        });
+
+
         imageView = findViewById(R.id.imageView);
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+            try {
+                bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), Uri.parse(mCurrentPhotoPath));
+                launchOpenCV();
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (requestCode == RESULT_LOAD_IMAGE && resultCode == RESULT_OK && null != data) {
+            Uri selectedImage = data.getData();
+            String[] filePathColumn = { MediaStore.Images.Media.DATA };
+
+            Cursor cursor = getContentResolver().query(selectedImage,
+                    filePathColumn, null, null, null);
+            cursor.moveToFirst();
+
+            int columnIndex = cursor.getColumnIndex(filePathColumn[0]);
+            String picturePath = cursor.getString(columnIndex);
+            cursor.close();
+
+            bitmap = BitmapFactory.decodeFile(picturePath);
+            launchOpenCV();
+
+        }
+
+    }
 
     private File createImageFile() throws IOException {
         // Create an image file name
@@ -88,24 +137,13 @@ public class MainActivity extends Activity {
         return image;
     }
 
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-            try {
-                bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), Uri.parse(mCurrentPhotoPath));
-
-                if (!OpenCVLoader.initDebug()) {
-                    Log.d("OpenCV", "Internal OpenCV library not found. Using OpenCV Manager for initialization");
-                    OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);
-                } else {
-                    Log.d("OpenCV", "OpenCV library found inside package. Using it!");
-                    mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+    private void launchOpenCV(){
+        if (!OpenCVLoader.initDebug()) {
+            Log.d("OpenCV", "Internal OpenCV library not found. Using OpenCV Manager for initialization");
+            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);
+        } else {
+            Log.d("OpenCV", "OpenCV library found inside package. Using it!");
+            mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
         }
     }
 
@@ -160,12 +198,13 @@ public class MainActivity extends Activity {
         List<MatOfPoint> approxContours = new ArrayList<>();
         approxContours.add(approxContour);
         Imgproc.drawContours(imageMat, approxContours, 0, new Scalar(0,0,255),3);
+        drawOnImageView(imageMat);
 
         List<Point> points = approxContour.toList();
         Log.i("points = ", points.toString());
         Log.i("#points", Integer.toString(points.size()));
-        List<Point> sortedPoints = new ArrayList<>();
 
+        List<Point> sortedPoints = new ArrayList<>();
         if(points.size() == 4){
             Point middlePoint = center(points);
             Log.i("middlePoint = ", middlePoint.toString());
@@ -188,13 +227,16 @@ public class MainActivity extends Activity {
 
             Mat M = Imgproc.getPerspectiveTransform(matOfPoint,matOfDstPoint);
             Imgproc.warpPerspective(sourceImageMat,imageMat,M,new Size(size,size));
-
-            Bitmap output_bitmap = Bitmap.createBitmap(imageMat.cols(), imageMat.rows(), Bitmap.Config.RGB_565);
-            Utils.matToBitmap(imageMat, output_bitmap);
-            imageView.setImageBitmap(output_bitmap);
+            drawOnImageView(imageMat);
         }
 
 
+    }
+
+    private void drawOnImageView(Mat imageMat){
+        Bitmap output_bitmap = Bitmap.createBitmap(imageMat.cols(), imageMat.rows(), Bitmap.Config.RGB_565);
+        Utils.matToBitmap(imageMat, output_bitmap);
+        imageView.setImageBitmap(output_bitmap);
     }
 
     private Point center(List<Point> points){
