@@ -7,12 +7,10 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
-
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
@@ -23,6 +21,7 @@ import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.MatOfPoint2f;
+import org.opencv.core.Point;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
@@ -34,30 +33,23 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-
 public class MainActivity extends Activity {
 
     ImageView imageView;
     Mat imageMat;
     Bitmap bitmap;
-
     static final int REQUEST_IMAGE_CAPTURE = 1;
     private String mCurrentPhotoPath;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         setContentView(R.layout.activity_capture_image);
-
         Button btnCamera = findViewById(R.id.button);
         btnCamera.setOnClickListener(new View.OnClickListener() {
-
             @Override
             public void onClick(View view) {
-//                Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-//                startActivityForResult(intent, 0);
-
                 Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                // Verify that the intent will resolve to an Activity.
                 if (cameraIntent.resolveActivity(getPackageManager()) != null) {
                     // Create the File where the photo should go
                     File photoFile = null;
@@ -69,15 +61,13 @@ public class MainActivity extends Activity {
                     }
                     // Continue only if the File was successfully created
                     if (photoFile != null) {
+                        // Setup camera intent for extra output (not only thumbnail)
                         cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(photoFile));
                         startActivityForResult(cameraIntent, REQUEST_IMAGE_CAPTURE);
                     }
                 }
-
-
             }
         });
-
         imageView = findViewById(R.id.imageView);
     }
 
@@ -93,7 +83,6 @@ public class MainActivity extends Activity {
                 ".jpg",         // suffix
                 storageDir      // directory
         );
-
         // Save a file: path for use with ACTION_VIEW intents
         mCurrentPhotoPath = "file:" + image.getAbsolutePath();
         return image;
@@ -103,8 +92,6 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-
-
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
             try {
                 bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), Uri.parse(mCurrentPhotoPath));
@@ -116,7 +103,6 @@ public class MainActivity extends Activity {
                     Log.d("OpenCV", "OpenCV library found inside package. Using it!");
                     mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
                 }
-
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -135,7 +121,6 @@ public class MainActivity extends Activity {
                     } catch (CvException e){
                         Log.d("Exception",e.getMessage());
                     }
-
                 } break;
                 default:
                 {
@@ -165,16 +150,69 @@ public class MainActivity extends Activity {
         double epsilon = 0.01 * Imgproc.arcLength(contour2f,true);
         MatOfPoint2f approxContour2f = new MatOfPoint2f();
         Imgproc.approxPolyDP(contour2f,approxContour2f,epsilon,true);
+        Log.i("approxContour2f", approxContour2f.toString());
+
         MatOfPoint approxContour = new MatOfPoint();
         approxContour2f.convertTo(approxContour,CvType.CV_32S);
+        Log.i("approxContour", approxContour.toString());
+
         List<MatOfPoint> approxContours = new ArrayList<>();
         approxContours.add(approxContour);
         Imgproc.drawContours(imageMat, approxContours, 0, new Scalar(0,0,255),3);
 
-
         Bitmap output_bitmap = Bitmap.createBitmap(imageMat.cols(), imageMat.rows(), Bitmap.Config.RGB_565);
         Utils.matToBitmap(imageMat, output_bitmap);
         imageView.setImageBitmap(output_bitmap);
+
+        List<Point> points = approxContour.toList();
+        Log.i("points = ", points.toString());
+        Log.i("#points", Integer.toString(points.size()));
+        if(points.size() == 4){
+            Point middlePoint = center(points);
+            Log.i("middlePoint = ", middlePoint.toString());
+            List<Point> sortedPoints = sort(points);
+            Log.i("sortedPoints = ", sortedPoints.toString());
+        }
+
+
+    }
+
+    public Point center(List<Point> points){
+        int sumX = 0;
+        int sumY = 0;
+        int n = points.size();
+        for (Point point : points) {
+            sumX += point.x;
+            sumY += point.y;
+        }
+        Point center = new Point(sumX/n,sumY/n);
+        return center;
+    }
+
+    public List<Point> sort(List<Point> points){
+        Point centerPoint = center(points);
+        double x_center = centerPoint.x;
+        double y_center = centerPoint.y;
+
+        List<Point> sortedPoints = new ArrayList<Point>();
+        if(points.size() == 4){
+            for(Point point : points) {
+                if(point.x < x_center && point.y < y_center){
+                    sortedPoints.add(0,point);
+                }
+                if(point.x < x_center && point.y > y_center){
+                    sortedPoints.add(1,point);
+                }
+                if(point.x > x_center && point.y > y_center){
+                    sortedPoints.add(2,point);
+                }
+                if(point.x > x_center && point.y < y_center){
+                    sortedPoints.add(3,point);
+                }
+            }
+        }
+
+        return sortedPoints;
     }
 
 }
