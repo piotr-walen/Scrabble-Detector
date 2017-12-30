@@ -1,6 +1,7 @@
 package com.example.piotr.scrabble_detector;
 
 import android.app.Activity;
+import android.content.ContentResolver;
 import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -13,6 +14,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
@@ -29,10 +31,7 @@ import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
-import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 public class MainActivity extends Activity {
@@ -42,7 +41,7 @@ public class MainActivity extends Activity {
     Bitmap bitmap;
     static final int REQUEST_IMAGE_CAPTURE = 1;
     private static int RESULT_LOAD_IMAGE = 2;
-
+    private Uri imageUri;
     private String mCurrentPhotoPath;
 
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,40 +51,22 @@ public class MainActivity extends Activity {
         btnCamera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                // Verify that the intent will resolve to an Activity.
-                if (cameraIntent.resolveActivity(getPackageManager()) != null) {
-                    // Create the File where the photo should go
-                    File photoFile = null;
-                    try {
-                        photoFile = createImageFile();
-                    } catch (IOException ex) {
-                        // Error occurred while creating the File
-                        Log.i("IO", "IOException");
-                    }
-                    // Continue only if the File was successfully created
-                    if (photoFile != null) {
-                        // Setup camera intent for extra output (not only thumbnail)
-                        cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(photoFile));
-                        startActivityForResult(cameraIntent, REQUEST_IMAGE_CAPTURE);
-                    }
-                }
+                Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                File photo = new File(Environment.getExternalStorageDirectory(), "Pic.jpg");
+                intent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(photo));
+                imageUri = Uri.fromFile(photo);
+                startActivityForResult(intent, REQUEST_IMAGE_CAPTURE);
             }
         });
-
         Button btnGallery = findViewById(R.id.gallery_button);
         btnGallery.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Intent i = new Intent(
-                        Intent.ACTION_PICK,
+                Intent i = new Intent(Intent.ACTION_PICK,
                         android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-
                 startActivityForResult(i, RESULT_LOAD_IMAGE);
             }
         });
-
-
         imageView = findViewById(R.id.imageView);
     }
 
@@ -93,49 +74,39 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+            Uri selectedImage = imageUri;
+            getContentResolver().notifyChange(selectedImage, null);
+            ContentResolver cr = getContentResolver();
             try {
-                bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), Uri.parse(mCurrentPhotoPath));
+                bitmap = android.provider.MediaStore.Images.Media
+                        .getBitmap(cr, selectedImage);
+                bitmap = ExifUtil.rotateBitmap(selectedImage.getPath(), bitmap);
                 launchOpenCV();
-
-            } catch (IOException e) {
-                e.printStackTrace();
+                Toast.makeText(this, selectedImage.toString(),
+                        Toast.LENGTH_LONG).show();
+            } catch (Exception e) {
+                Toast.makeText(this, "Failed to load", Toast.LENGTH_SHORT)
+                        .show();
+                Log.e("Camera", e.toString());
             }
         }
 
         if (requestCode == RESULT_LOAD_IMAGE && resultCode == RESULT_OK && null != data) {
             Uri selectedImage = data.getData();
             String[] filePathColumn = { MediaStore.Images.Media.DATA };
-
             Cursor cursor = getContentResolver().query(selectedImage,
                     filePathColumn, null, null, null);
             cursor.moveToFirst();
-
             int columnIndex = cursor.getColumnIndex(filePathColumn[0]);
-            String picturePath = cursor.getString(columnIndex);
+            mCurrentPhotoPath = cursor.getString(columnIndex);
             cursor.close();
-
-            bitmap = BitmapFactory.decodeFile(picturePath);
+            bitmap = BitmapFactory.decodeFile(mCurrentPhotoPath);
+            bitmap = ExifUtil.rotateBitmap(mCurrentPhotoPath,bitmap);
             launchOpenCV();
-
         }
-
     }
 
-    private File createImageFile() throws IOException {
-        // Create an image file name
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-        String imageFileName = "JPEG_" + timeStamp + "_";
-        File storageDir = Environment.getExternalStoragePublicDirectory(
-                Environment.DIRECTORY_PICTURES);
-        File image = File.createTempFile(
-                imageFileName,  // prefix
-                ".jpg",         // suffix
-                storageDir      // directory
-        );
-        // Save a file: path for use with ACTION_VIEW intents
-        mCurrentPhotoPath = "file:" + image.getAbsolutePath();
-        return image;
-    }
+
 
     private void launchOpenCV(){
         if (!OpenCVLoader.initDebug()) {
