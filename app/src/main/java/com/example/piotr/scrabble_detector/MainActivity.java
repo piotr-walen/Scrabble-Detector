@@ -132,9 +132,10 @@ public class MainActivity extends Activity {
 
 
     private void imageProcessing(){
-        imageMat=new Mat(bitmap.getWidth(),bitmap.getHeight(), CvType.CV_8UC1);
-        Utils.bitmapToMat(bitmap, imageMat);
+        Mat sourceImageMat = new Mat(bitmap.getWidth(),bitmap.getHeight(), CvType.CV_8UC1);
+        Utils.bitmapToMat(bitmap, sourceImageMat);
 
+        imageMat = sourceImageMat.clone();
         Imgproc.cvtColor(imageMat,imageMat,Imgproc.COLOR_RGB2GRAY);
         Imgproc.blur(imageMat,imageMat, new Size(7,7));
         Imgproc.Canny(imageMat,imageMat,10.0,100.0);
@@ -160,24 +161,43 @@ public class MainActivity extends Activity {
         approxContours.add(approxContour);
         Imgproc.drawContours(imageMat, approxContours, 0, new Scalar(0,0,255),3);
 
-        Bitmap output_bitmap = Bitmap.createBitmap(imageMat.cols(), imageMat.rows(), Bitmap.Config.RGB_565);
-        Utils.matToBitmap(imageMat, output_bitmap);
-        imageView.setImageBitmap(output_bitmap);
-
         List<Point> points = approxContour.toList();
         Log.i("points = ", points.toString());
         Log.i("#points", Integer.toString(points.size()));
+        List<Point> sortedPoints = new ArrayList<>();
+
         if(points.size() == 4){
             Point middlePoint = center(points);
             Log.i("middlePoint = ", middlePoint.toString());
-            List<Point> sortedPoints = sort(points);
+            sortedPoints = sort(points);
             Log.i("sortedPoints = ", sortedPoints.toString());
+        }
+
+        if(!sortedPoints.isEmpty()){
+            MatOfPoint matOfPoint = new MatOfPoint();
+            matOfPoint.fromList(sortedPoints);
+
+            List<Point> dstPoints = new ArrayList<>();
+            double size = 500;
+            dstPoints.add(new Point(0,0));
+            dstPoints.add(new Point(0,size));
+            dstPoints.add(new Point(size,size));
+            dstPoints.add(new Point(size,0));
+            MatOfPoint matOfDstPoint = new MatOfPoint();
+            matOfPoint.fromList(dstPoints);
+
+            Mat M = Imgproc.getPerspectiveTransform(matOfPoint,matOfDstPoint);
+            Imgproc.warpPerspective(sourceImageMat,imageMat,M,new Size(size,size));
+
+            Bitmap output_bitmap = Bitmap.createBitmap(imageMat.cols(), imageMat.rows(), Bitmap.Config.RGB_565);
+            Utils.matToBitmap(imageMat, output_bitmap);
+            imageView.setImageBitmap(output_bitmap);
         }
 
 
     }
 
-    public Point center(List<Point> points){
+    private Point center(List<Point> points){
         int sumX = 0;
         int sumY = 0;
         int n = points.size();
@@ -189,7 +209,7 @@ public class MainActivity extends Activity {
         return center;
     }
 
-    public List<Point> sort(List<Point> points){
+    private List<Point> sort(List<Point> points){
         Point centerPoint = center(points);
         double x_center = centerPoint.x;
         double y_center = centerPoint.y;
