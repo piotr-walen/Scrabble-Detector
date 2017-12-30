@@ -31,6 +31,8 @@ import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,6 +41,7 @@ public class MainActivity extends Activity {
     ImageView imageView;
     Mat imageMat;
     Bitmap bitmap;
+    Bitmap output_bitmap;
     static final int REQUEST_IMAGE_CAPTURE = 1;
     private static int RESULT_LOAD_IMAGE = 2;
     private Uri imageUri;
@@ -52,7 +55,7 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View view) {
                 Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                File photo = new File(Environment.getExternalStorageDirectory(), "Pic.jpg");
+                File photo = new File(Environment.getExternalStorageDirectory(), "source_image.jpg");
                 intent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(photo));
                 imageUri = Uri.fromFile(photo);
                 startActivityForResult(intent, REQUEST_IMAGE_CAPTURE);
@@ -82,11 +85,8 @@ public class MainActivity extends Activity {
                         .getBitmap(cr, selectedImage);
                 bitmap = ExifUtil.rotateBitmap(selectedImage.getPath(), bitmap);
                 launchOpenCV();
-                Toast.makeText(this, selectedImage.toString(),
-                        Toast.LENGTH_LONG).show();
+
             } catch (Exception e) {
-                Toast.makeText(this, "Failed to load", Toast.LENGTH_SHORT)
-                        .show();
                 Log.e("Camera", e.toString());
             }
         }
@@ -160,27 +160,26 @@ public class MainActivity extends Activity {
         double epsilon = 0.01 * Imgproc.arcLength(contour2f,true);
         MatOfPoint2f approxContour2f = new MatOfPoint2f();
         Imgproc.approxPolyDP(contour2f,approxContour2f,epsilon,true);
-        Log.i("approxContour2f", approxContour2f.toString());
 
         MatOfPoint approxContour = new MatOfPoint();
         approxContour2f.convertTo(approxContour,CvType.CV_32S);
-        Log.i("approxContour", approxContour.toString());
 
         List<MatOfPoint> approxContours = new ArrayList<>();
         approxContours.add(approxContour);
         Imgproc.drawContours(imageMat, approxContours, 0, new Scalar(0,0,255),3);
-        drawOnImageView(imageMat);
 
         List<Point> points = approxContour.toList();
-        Log.i("points = ", points.toString());
-        Log.i("#points", Integer.toString(points.size()));
+        Log.i("OpenCV", "points = " + points.toString());
+        Log.i("OpenCV", "number of points = " + Integer.toString(points.size()));
 
         List<Point> sortedPoints = new ArrayList<>();
         if(points.size() == 4){
             Point middlePoint = center(points);
-            Log.i("middlePoint = ", middlePoint.toString());
+            Log.i("OpenCV","middle point = " + middlePoint.toString());
             sortedPoints = sort(points);
-            Log.i("sortedPoints = ", sortedPoints.toString());
+            Log.i("OpenCV", "sorted points = " + sortedPoints.toString());
+        } else {
+            Log.e("OpenCV", "Failed to find correct contour.");
         }
 
         if(!sortedPoints.isEmpty()){
@@ -198,17 +197,40 @@ public class MainActivity extends Activity {
 
             Mat M = Imgproc.getPerspectiveTransform(matOfPoint,matOfDstPoint);
             Imgproc.warpPerspective(sourceImageMat,imageMat,M,new Size(size,size));
-            drawOnImageView(imageMat);
+            Log.i("OpenCV","Image has been warped");
+        } else {
+            Toast.makeText(this, "Failed to warp image!", Toast.LENGTH_SHORT).show();
+            Log.e("OpenCV","Failed to warp image");
+
         }
 
-
-    }
-
-    private void drawOnImageView(Mat imageMat){
-        Bitmap output_bitmap = Bitmap.createBitmap(imageMat.cols(), imageMat.rows(), Bitmap.Config.RGB_565);
+        output_bitmap = Bitmap.createBitmap(imageMat.cols(), imageMat.rows(), Bitmap.Config.RGB_565);
         Utils.matToBitmap(imageMat, output_bitmap);
-        imageView.setImageBitmap(output_bitmap);
+        drawOnImageView(output_bitmap);
+        saveImage(output_bitmap);
+
     }
+
+    private void drawOnImageView(Bitmap bitmap){
+        imageView.setImageBitmap(bitmap);
+    }
+
+    private void saveImage(Bitmap bitmap){
+        try {
+            String path = Environment.getExternalStorageDirectory().toString();
+            OutputStream fOut = null;
+            File file = new File(path, "output_image.jpg"); // the File to save , append increasing numeric counter to prevent files from getting overwritten.
+            fOut = new FileOutputStream(file);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, fOut); // saving the Bitmap to a file compressed as a JPEG with 85% compression rate
+            fOut.flush();
+            fOut.close();
+            MediaStore.Images.Media.insertImage(getContentResolver(),file.getAbsolutePath(),file.getName(),file.getName());
+        } catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+
+
 
     private Point center(List<Point> points){
         int sumX = 0;
