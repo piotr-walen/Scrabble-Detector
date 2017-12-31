@@ -77,6 +77,7 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+            Log.i("Camera", "Opening camera");
             Uri selectedImage = imageUri;
             getContentResolver().notifyChange(selectedImage, null);
             ContentResolver cr = getContentResolver();
@@ -92,6 +93,7 @@ public class MainActivity extends Activity {
         }
 
         if (requestCode == RESULT_LOAD_IMAGE && resultCode == RESULT_OK && null != data) {
+            Log.i("Gallery", "Opening gallery");
             Uri selectedImage = data.getData();
             String[] filePathColumn = { MediaStore.Images.Media.DATA };
             Cursor cursor = getContentResolver().query(selectedImage,
@@ -150,23 +152,27 @@ public class MainActivity extends Activity {
         Imgproc.Canny(imageMat,imageMat,10.0,100.0);
         Mat element = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5, 5));
         Imgproc.dilate(imageMat,imageMat,element);
+
         List<MatOfPoint> contours = new ArrayList<>();
         Imgproc.findContours(imageMat, contours, new Mat(), Imgproc.RETR_LIST,Imgproc.CHAIN_APPROX_SIMPLE);
-        Imgproc.drawContours(imageMat, contours, 0, new Scalar(0,0,255),3);
-
         MatOfPoint contour = contours.get(0);
+        for(MatOfPoint c : contours) {
+            if(Imgproc.contourArea(c) > Imgproc.contourArea(contour)) {
+                contour = c;
+            }
+        }
         MatOfPoint2f contour2f = new MatOfPoint2f();
         contour.convertTo(contour2f,CvType.CV_32FC2);
         double epsilon = 0.01 * Imgproc.arcLength(contour2f,true);
         MatOfPoint2f approxContour2f = new MatOfPoint2f();
         Imgproc.approxPolyDP(contour2f,approxContour2f,epsilon,true);
-
         MatOfPoint approxContour = new MatOfPoint();
         approxContour2f.convertTo(approxContour,CvType.CV_32S);
+        List<MatOfPoint> approxContourList = new ArrayList<>();
+        approxContourList.add(approxContour);
 
-        List<MatOfPoint> approxContours = new ArrayList<>();
-        approxContours.add(approxContour);
-        Imgproc.drawContours(imageMat, approxContours, 0, new Scalar(0,0,255),3);
+        imageMat = sourceImageMat.clone();
+        Imgproc.drawContours(imageMat, approxContourList, 0, new Scalar(0,0,255),5);
 
         List<Point> points = approxContour.toList();
         Log.i("OpenCV", "points = " + points.toString());
@@ -181,21 +187,22 @@ public class MainActivity extends Activity {
         } else {
             Log.e("OpenCV", "Failed to find correct contour.");
         }
-
         if(!sortedPoints.isEmpty()){
-            MatOfPoint matOfPoint = new MatOfPoint();
-            matOfPoint.fromList(sortedPoints);
+            MatOfPoint2f src = new MatOfPoint2f();
+            src.fromList(sortedPoints);
+            Log.i("OpenCV","warping... source points = " + src.toString());
 
-            List<Point> dstPoints = new ArrayList<>();
-            double size = 500;
-            dstPoints.add(new Point(0,0));
-            dstPoints.add(new Point(0,size));
-            dstPoints.add(new Point(size,size));
-            dstPoints.add(new Point(size,0));
-            MatOfPoint matOfDstPoint = new MatOfPoint();
-            matOfPoint.fromList(dstPoints);
+            double size = 300;
+            MatOfPoint2f dst = new MatOfPoint2f(
+                    new Point(0,0), // awt has a Point class too, so needs canonical name here
+                    new Point(size,0),
+                    new Point(size,size),
+                    new Point(0,size)
+            );
 
-            Mat M = Imgproc.getPerspectiveTransform(matOfPoint,matOfDstPoint);
+            Log.i("OpenCV","warping... destination points = " +dst.toString());
+
+            Mat M = Imgproc.getPerspectiveTransform(src,dst);
             Imgproc.warpPerspective(sourceImageMat,imageMat,M,new Size(size,size));
             Log.i("OpenCV","Image has been warped");
         } else {
@@ -204,8 +211,11 @@ public class MainActivity extends Activity {
 
         }
 
-        output_bitmap = Bitmap.createBitmap(imageMat.cols(), imageMat.rows(), Bitmap.Config.RGB_565);
-        Utils.matToBitmap(imageMat, output_bitmap);
+
+        //checking output
+        Mat outputMat = imageMat.clone();
+        output_bitmap = Bitmap.createBitmap(outputMat.cols(), outputMat.rows(), Bitmap.Config.RGB_565);
+        Utils.matToBitmap(outputMat, output_bitmap);
         drawOnImageView(output_bitmap);
         saveImage(output_bitmap);
 
@@ -218,9 +228,8 @@ public class MainActivity extends Activity {
     private void saveImage(Bitmap bitmap){
         try {
             String path = Environment.getExternalStorageDirectory().toString();
-            OutputStream fOut = null;
             File file = new File(path, "output_image.jpg"); // the File to save , append increasing numeric counter to prevent files from getting overwritten.
-            fOut = new FileOutputStream(file);
+            OutputStream fOut = new FileOutputStream(file);
             bitmap.compress(Bitmap.CompressFormat.JPEG, 85, fOut); // saving the Bitmap to a file compressed as a JPEG with 85% compression rate
             fOut.flush();
             fOut.close();
