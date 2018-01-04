@@ -95,7 +95,7 @@ public class MainActivity extends Activity {
         if (requestCode == RESULT_LOAD_IMAGE && resultCode == RESULT_OK && null != data) {
             Log.i("Gallery", "Opening gallery");
             Uri selectedImage = data.getData();
-            String[] filePathColumn = { MediaStore.Images.Media.DATA };
+            String[] filePathColumn = {MediaStore.Images.Media.DATA};
             Cursor cursor = getContentResolver().query(selectedImage,
                     filePathColumn, null, null, null);
             cursor.moveToFirst();
@@ -103,14 +103,13 @@ public class MainActivity extends Activity {
             mCurrentPhotoPath = cursor.getString(columnIndex);
             cursor.close();
             bitmap = BitmapFactory.decodeFile(mCurrentPhotoPath);
-            bitmap = ExifUtil.rotateBitmap(mCurrentPhotoPath,bitmap);
+            bitmap = ExifUtil.rotateBitmap(mCurrentPhotoPath, bitmap);
             launchOpenCV();
         }
     }
 
 
-
-    private void launchOpenCV(){
+    private void launchOpenCV() {
         if (!OpenCVLoader.initDebug()) {
             Log.d("OpenCV", "Internal OpenCV library not found. Using OpenCV Manager for initialization");
             OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);
@@ -124,90 +123,91 @@ public class MainActivity extends Activity {
         @Override
         public void onManagerConnected(int status) {
             switch (status) {
-                case LoaderCallbackInterface.SUCCESS:
-                {
+                case LoaderCallbackInterface.SUCCESS: {
                     Log.i("OpenCV", "OpenCV loaded successfully");
                     try {
                         imageProcessing();
-                    } catch (CvException e){
-                        Log.d("Exception",e.getMessage());
+                    } catch (CvException e) {
+                        Log.d("Exception", e.getMessage());
                     }
-                } break;
-                default:
-                {
+                }
+                break;
+                default: {
                     super.onManagerConnected(status);
-                } break;
+                }
+                break;
             }
         }
     };
 
 
-    private void imageProcessing(){
-        Mat sourceImageMat = new Mat(bitmap.getWidth(),bitmap.getHeight(), CvType.CV_8UC1);
+    private void imageProcessing() {
+        Mat sourceImageMat = new Mat(bitmap.getWidth(), bitmap.getHeight(), CvType.CV_8UC1);
         Utils.bitmapToMat(bitmap, sourceImageMat);
 
         imageMat = sourceImageMat.clone();
-        Imgproc.cvtColor(imageMat,imageMat,Imgproc.COLOR_RGB2GRAY);
-        Imgproc.blur(imageMat,imageMat, new Size(7,7));
-        Imgproc.Canny(imageMat,imageMat,10.0,100.0);
+        Imgproc.cvtColor(imageMat, imageMat, Imgproc.COLOR_RGB2GRAY);
+        Imgproc.blur(imageMat, imageMat, new Size(7, 7));
+        Imgproc.Canny(imageMat, imageMat, 10.0, 100.0);
         Mat element = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5, 5));
-        Imgproc.dilate(imageMat,imageMat,element);
+        Imgproc.dilate(imageMat, imageMat, element);
 
         List<MatOfPoint> contours = new ArrayList<>();
-        Imgproc.findContours(imageMat, contours, new Mat(), Imgproc.RETR_LIST,Imgproc.CHAIN_APPROX_SIMPLE);
+        Imgproc.findContours(imageMat, contours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
         MatOfPoint contour = contours.get(0);
-        for(MatOfPoint c : contours) {
-            if(Imgproc.contourArea(c) > Imgproc.contourArea(contour)) {
+        for (MatOfPoint c : contours) {
+            if (Imgproc.contourArea(c) > Imgproc.contourArea(contour)) {
                 contour = c;
             }
         }
+
         MatOfPoint2f contour2f = new MatOfPoint2f();
-        contour.convertTo(contour2f,CvType.CV_32FC2);
-        double epsilon = 0.01 * Imgproc.arcLength(contour2f,true);
+        contour.convertTo(contour2f, CvType.CV_32FC2);
+        double epsilon = 0.01 * Imgproc.arcLength(contour2f, true);
         MatOfPoint2f approxContour2f = new MatOfPoint2f();
-        Imgproc.approxPolyDP(contour2f,approxContour2f,epsilon,true);
+        Imgproc.approxPolyDP(contour2f, approxContour2f, epsilon, true);
         MatOfPoint approxContour = new MatOfPoint();
-        approxContour2f.convertTo(approxContour,CvType.CV_32S);
+        approxContour2f.convertTo(approxContour, CvType.CV_32S);
         List<MatOfPoint> approxContourList = new ArrayList<>();
         approxContourList.add(approxContour);
 
         imageMat = sourceImageMat.clone();
-        Imgproc.drawContours(imageMat, approxContourList, 0, new Scalar(0,0,255),5);
+        Imgproc.drawContours(imageMat, approxContourList, 0, new Scalar(0, 0, 255), 5);
 
         List<Point> points = approxContour.toList();
         Log.i("OpenCV", "points = " + points.toString());
         Log.i("OpenCV", "number of points = " + Integer.toString(points.size()));
 
         List<Point> sortedPoints = new ArrayList<>();
-        if(points.size() == 4){
+        if (points.size() == 4) {
             Point middlePoint = center(points);
-            Log.i("OpenCV","middle point = " + middlePoint.toString());
+            Log.i("OpenCV", "middle point = " + middlePoint.toString());
             sortedPoints = sort(points);
             Log.i("OpenCV", "sorted points = " + sortedPoints.toString());
         } else {
             Log.e("OpenCV", "Failed to find correct contour.");
         }
-        if(!sortedPoints.isEmpty()){
+        if (!sortedPoints.isEmpty()) {
             MatOfPoint2f src = new MatOfPoint2f();
             src.fromList(sortedPoints);
-            Log.i("OpenCV","warping... source points = " + src.toString());
+            Log.i("OpenCV", "warping... source points = " + src.toString());
 
             double size = 300;
             MatOfPoint2f dst = new MatOfPoint2f(
-                    new Point(0,0), // awt has a Point class too, so needs canonical name here
-                    new Point(size,0),
-                    new Point(size,size),
-                    new Point(0,size)
+                    new Point(0, 0), // awt has a Point class too, so needs canonical name here
+                    new Point(size, 0),
+                    new Point(size, size),
+                    new Point(0, size)
             );
 
-            Log.i("OpenCV","warping... destination points = " +dst.toString());
+            Log.i("OpenCV", "warping... destination points = " + dst.toString());
 
-            Mat M = Imgproc.getPerspectiveTransform(src,dst);
-            Imgproc.warpPerspective(sourceImageMat,imageMat,M,new Size(size,size));
-            Log.i("OpenCV","Image has been warped");
+            Mat M = Imgproc.getPerspectiveTransform(src, dst);
+            Imgproc.warpPerspective(sourceImageMat, imageMat, M, new Size(size, size));
+            Log.i("OpenCV", "Image has been warped");
         } else {
             Toast.makeText(this, "Failed to warp image!", Toast.LENGTH_SHORT).show();
-            Log.e("OpenCV","Failed to warp image");
+            Log.e("OpenCV", "Failed to warp image");
 
         }
 
@@ -221,11 +221,11 @@ public class MainActivity extends Activity {
 
     }
 
-    private void drawOnImageView(Bitmap bitmap){
+    private void drawOnImageView(Bitmap bitmap) {
         imageView.setImageBitmap(bitmap);
     }
 
-    private void saveImage(Bitmap bitmap){
+    private void saveImage(Bitmap bitmap) {
         try {
             String path = Environment.getExternalStorageDirectory().toString();
             File file = new File(path, "output_image.jpg"); // the File to save , append increasing numeric counter to prevent files from getting overwritten.
@@ -233,15 +233,13 @@ public class MainActivity extends Activity {
             bitmap.compress(Bitmap.CompressFormat.JPEG, 85, fOut); // saving the Bitmap to a file compressed as a JPEG with 85% compression rate
             fOut.flush();
             fOut.close();
-            MediaStore.Images.Media.insertImage(getContentResolver(),file.getAbsolutePath(),file.getName(),file.getName());
-        } catch (Exception e){
+            MediaStore.Images.Media.insertImage(getContentResolver(), file.getAbsolutePath(), file.getName(), file.getName());
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-
-
-    private Point center(List<Point> points){
+    private Point center(List<Point> points) {
         int sumX = 0;
         int sumY = 0;
         int n = points.size();
@@ -249,29 +247,26 @@ public class MainActivity extends Activity {
             sumX += point.x;
             sumY += point.y;
         }
-        Point center = new Point(sumX/n,sumY/n);
+        Point center = new Point(sumX / n, sumY / n);
         return center;
     }
 
-    private List<Point> sort(List<Point> points){
+    private List<Point> sort(List<Point> points) {
         Point centerPoint = center(points);
         double x_center = centerPoint.x;
         double y_center = centerPoint.y;
 
         List<Point> sortedPoints = new ArrayList<Point>();
-        if(points.size() == 4){
-            for(Point point : points) {
-                if(point.x < x_center && point.y < y_center){
-                    sortedPoints.add(0,point);
-                }
-                if(point.x < x_center && point.y > y_center){
-                    sortedPoints.add(1,point);
-                }
-                if(point.x > x_center && point.y > y_center){
-                    sortedPoints.add(2,point);
-                }
-                if(point.x > x_center && point.y < y_center){
-                    sortedPoints.add(3,point);
+        if (points.size() == 4) {
+            for (Point point : points) {
+                if (point.x <= x_center && point.y <= y_center) {
+                    sortedPoints.add(0, point);
+                } else if (point.x <= x_center && point.y > y_center) {
+                    sortedPoints.add(1, point);
+                } else if (point.x > x_center && point.y > y_center) {
+                    sortedPoints.add(2, point);
+                } else if (point.x > x_center && point.y <= y_center) {
+                    sortedPoints.add(3, point);
                 }
             }
         }
