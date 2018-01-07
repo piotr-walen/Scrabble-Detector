@@ -26,7 +26,6 @@ import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
-import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
@@ -38,14 +37,11 @@ import java.util.List;
 
 public class MainActivity extends Activity {
 
-    ImageView imageView;
-    Mat imageMat;
-    Bitmap bitmap;
-    Bitmap output_bitmap;
-    static final int REQUEST_IMAGE_CAPTURE = 1;
-    private static int RESULT_LOAD_IMAGE = 2;
+    private static final int REQUEST_IMAGE_CAPTURE = 1;
+    private static final int RESULT_LOAD_IMAGE = 2;
+    private ImageView imageView;
+    private Bitmap bitmap;
     private Uri imageUri;
-    private String mCurrentPhotoPath;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -55,7 +51,8 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View view) {
                 Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                File photo = new File(Environment.getExternalStorageDirectory(), "source_image.jpg");
+                File photo = new File(Environment.getExternalStorageDirectory(),
+                        "source_image.jpg");
                 intent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(photo));
                 imageUri = Uri.fromFile(photo);
                 startActivityForResult(intent, REQUEST_IMAGE_CAPTURE);
@@ -76,6 +73,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
             Log.i("Camera", "Opening camera");
             Uri selectedImage = imageUri;
@@ -86,7 +84,6 @@ public class MainActivity extends Activity {
                         .getBitmap(cr, selectedImage);
                 bitmap = ExifUtil.rotateBitmap(selectedImage.getPath(), bitmap);
                 launchOpenCV();
-
             } catch (Exception e) {
                 Log.e("Camera", e.toString());
             }
@@ -96,23 +93,32 @@ public class MainActivity extends Activity {
             Log.i("Gallery", "Opening gallery");
             Uri selectedImage = data.getData();
             String[] filePathColumn = {MediaStore.Images.Media.DATA};
-            Cursor cursor = getContentResolver().query(selectedImage,
-                    filePathColumn, null, null, null);
-            cursor.moveToFirst();
-            int columnIndex = cursor.getColumnIndex(filePathColumn[0]);
-            mCurrentPhotoPath = cursor.getString(columnIndex);
-            cursor.close();
-            bitmap = BitmapFactory.decodeFile(mCurrentPhotoPath);
-            bitmap = ExifUtil.rotateBitmap(mCurrentPhotoPath, bitmap);
-            launchOpenCV();
+            if(selectedImage != null) {
+                try {
+                    Cursor cursor = getContentResolver().query(selectedImage,
+                            filePathColumn, null, null, null);
+                    if (cursor != null) {
+                        cursor.moveToFirst();
+                        int columnIndex = cursor.getColumnIndex(filePathColumn[0]);
+                        String mCurrentPhotoPath = cursor.getString(columnIndex);
+                        cursor.close();
+                        bitmap = BitmapFactory.decodeFile(mCurrentPhotoPath);
+                        bitmap = ExifUtil.rotateBitmap(mCurrentPhotoPath, bitmap);
+                        launchOpenCV();
+                    }
+                } catch (Exception e){
+                    Log.e("Gallery", e.toString());
+                }
+            }
         }
     }
 
-
     private void launchOpenCV() {
         if (!OpenCVLoader.initDebug()) {
-            Log.d("OpenCV", "Internal OpenCV library not found. Using OpenCV Manager for initialization");
-            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);
+            Log.d("OpenCV", "Internal OpenCV library not found. " +
+                    "Using OpenCV Manager for initialization");
+            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0,
+                    this, mLoaderCallback);
         } else {
             Log.d("OpenCV", "OpenCV library found inside package. Using it!");
             mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
@@ -140,27 +146,62 @@ public class MainActivity extends Activity {
         }
     };
 
-
     private void imageProcessing() {
         Mat sourceImageMat = new Mat(bitmap.getWidth(), bitmap.getHeight(), CvType.CV_8UC1);
         Utils.bitmapToMat(bitmap, sourceImageMat);
-
-        imageMat = sourceImageMat.clone();
+        Mat imageMat = sourceImageMat.clone();
         Imgproc.cvtColor(imageMat, imageMat, Imgproc.COLOR_RGB2GRAY);
         Imgproc.blur(imageMat, imageMat, new Size(7, 7));
         Imgproc.Canny(imageMat, imageMat, 10.0, 100.0);
-        Mat element = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5, 5));
+        Mat element = Imgproc.getStructuringElement(Imgproc.MORPH_RECT,
+                new Size(5, 5));
         Imgproc.dilate(imageMat, imageMat, element);
-
         List<MatOfPoint> contours = new ArrayList<>();
-        Imgproc.findContours(imageMat, contours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
+        Imgproc.findContours(imageMat, contours, new Mat(), Imgproc.RETR_LIST,
+                Imgproc.CHAIN_APPROX_SIMPLE);
+        if(!contours.isEmpty()){
+            MatOfPoint contour = findMaxAreaContour(contours);
+            MatOfPoint approxContour = squareContour(contour);
+            List<Point> points = approxContour.toList();
+            Log.i("OpenCV", "points = " + points.toString());
+            Log.i("OpenCV", "number of points = " + Integer.toString(points.size()));
+
+            if(points.size() == 4){
+                Point middlePoint = findCenterPoint(points);
+                Log.i("OpenCV", "middle point = " + middlePoint.toString());
+                List<Point> sortedPoints = sortPointsClockwise(points);
+                Log.i("OpenCV", "sorted points = " + sortedPoints.toString());
+                warpImage(sortedPoints,sourceImageMat,imageMat);
+
+            } else {
+                Toast.makeText(this, "Failed to find correct contour!", Toast.LENGTH_SHORT).show();
+                Log.e("OpenCV", "Failed to find correct contour.");
+            }
+        } else {
+            Toast.makeText(this, "Failed to find contour!", Toast.LENGTH_SHORT).show();
+            Log.e("OpenCV", "Failed to find contour");
+        }
+        Mat outputMat = imageMat.clone();
+        Bitmap output_bitmap = Bitmap.createBitmap(outputMat.cols(), outputMat.rows(),
+                Bitmap.Config.RGB_565);
+        Utils.matToBitmap(outputMat, output_bitmap);
+        drawOnImageView(output_bitmap);
+        saveImage(output_bitmap);
+    }
+
+
+
+    private MatOfPoint findMaxAreaContour (List<MatOfPoint > contours){
         MatOfPoint contour = contours.get(0);
         for (MatOfPoint c : contours) {
             if (Imgproc.contourArea(c) > Imgproc.contourArea(contour)) {
                 contour = c;
             }
         }
+        return contour;
+    }
 
+    private MatOfPoint squareContour(MatOfPoint contour){
         MatOfPoint2f contour2f = new MatOfPoint2f();
         contour.convertTo(contour2f, CvType.CV_32FC2);
         double epsilon = 0.01 * Imgproc.arcLength(contour2f, true);
@@ -168,78 +209,11 @@ public class MainActivity extends Activity {
         Imgproc.approxPolyDP(contour2f, approxContour2f, epsilon, true);
         MatOfPoint approxContour = new MatOfPoint();
         approxContour2f.convertTo(approxContour, CvType.CV_32S);
-        List<MatOfPoint> approxContourList = new ArrayList<>();
-        approxContourList.add(approxContour);
-
-        imageMat = sourceImageMat.clone();
-        Imgproc.drawContours(imageMat, approxContourList, 0, new Scalar(0, 0, 255), 5);
-
-        List<Point> points = approxContour.toList();
-        Log.i("OpenCV", "points = " + points.toString());
-        Log.i("OpenCV", "number of points = " + Integer.toString(points.size()));
-
-        List<Point> sortedPoints = new ArrayList<>();
-        if (points.size() == 4) {
-            Point middlePoint = center(points);
-            Log.i("OpenCV", "middle point = " + middlePoint.toString());
-            sortedPoints = sort(points);
-            Log.i("OpenCV", "sorted points = " + sortedPoints.toString());
-        } else {
-            Log.e("OpenCV", "Failed to find correct contour.");
-        }
-        if (!sortedPoints.isEmpty()) {
-            MatOfPoint2f src = new MatOfPoint2f();
-            src.fromList(sortedPoints);
-            Log.i("OpenCV", "warping... source points = " + src.toString());
-
-            double size = 300;
-            MatOfPoint2f dst = new MatOfPoint2f(
-                    new Point(0, 0), // awt has a Point class too, so needs canonical name here
-                    new Point(size, 0),
-                    new Point(size, size),
-                    new Point(0, size)
-            );
-
-            Log.i("OpenCV", "warping... destination points = " + dst.toString());
-
-            Mat M = Imgproc.getPerspectiveTransform(src, dst);
-            Imgproc.warpPerspective(sourceImageMat, imageMat, M, new Size(size, size));
-            Log.i("OpenCV", "Image has been warped");
-        } else {
-            Toast.makeText(this, "Failed to warp image!", Toast.LENGTH_SHORT).show();
-            Log.e("OpenCV", "Failed to warp image");
-
-        }
-
-
-        //checking output
-        Mat outputMat = imageMat.clone();
-        output_bitmap = Bitmap.createBitmap(outputMat.cols(), outputMat.rows(), Bitmap.Config.RGB_565);
-        Utils.matToBitmap(outputMat, output_bitmap);
-        drawOnImageView(output_bitmap);
-        saveImage(output_bitmap);
-
+        return  approxContour;
     }
 
-    private void drawOnImageView(Bitmap bitmap) {
-        imageView.setImageBitmap(bitmap);
-    }
 
-    private void saveImage(Bitmap bitmap) {
-        try {
-            String path = Environment.getExternalStorageDirectory().toString();
-            File file = new File(path, "output_image.jpg"); // the File to save , append increasing numeric counter to prevent files from getting overwritten.
-            OutputStream fOut = new FileOutputStream(file);
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, fOut); // saving the Bitmap to a file compressed as a JPEG with 85% compression rate
-            fOut.flush();
-            fOut.close();
-            MediaStore.Images.Media.insertImage(getContentResolver(), file.getAbsolutePath(), file.getName(), file.getName());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private Point center(List<Point> points) {
+    private Point findCenterPoint(List<Point> points) {
         int sumX = 0;
         int sumY = 0;
         int n = points.size();
@@ -247,16 +221,15 @@ public class MainActivity extends Activity {
             sumX += point.x;
             sumY += point.y;
         }
-        Point center = new Point(sumX / n, sumY / n);
-        return center;
+        return new Point(sumX / n, sumY / n);
     }
 
-    private List<Point> sort(List<Point> points) {
-        Point centerPoint = center(points);
+    private List<Point> sortPointsClockwise(List<Point> points) {
+        Point centerPoint = findCenterPoint(points);
         double x_center = centerPoint.x;
         double y_center = centerPoint.y;
 
-        List<Point> sortedPoints = new ArrayList<Point>();
+        List<Point> sortedPoints = new ArrayList<>();
         if (points.size() == 4) {
             for (Point point : points) {
                 if (point.x <= x_center && point.y <= y_center) {
@@ -274,4 +247,42 @@ public class MainActivity extends Activity {
         return sortedPoints;
     }
 
+    private void warpImage(List<Point> sortedPoints, Mat sourceImageMat, Mat imageMat){
+        MatOfPoint2f src = new MatOfPoint2f();
+        src.fromList(sortedPoints);
+        Log.i("OpenCV", "warping... source points = " + src.toString());
+
+        double size = 300;
+        MatOfPoint2f dst = new MatOfPoint2f(
+                new Point(0, 0),
+                new Point(size, 0),
+                new Point(size, size),
+                new Point(0, size)
+        );
+
+        Log.i("OpenCV", "warping... destination points = " + dst.toString());
+        Mat M = Imgproc.getPerspectiveTransform(src, dst);
+        Imgproc.warpPerspective(sourceImageMat, imageMat, M, new Size(size, size));
+        Log.i("OpenCV", "Image has been warped");
+
+    }
+
+    private void drawOnImageView(Bitmap bitmap) {
+        imageView.setImageBitmap(bitmap);
+    }
+
+    private void saveImage(Bitmap bitmap) {
+        try {
+            String path = Environment.getExternalStorageDirectory().toString();
+            File file = new File(path, "output_image.jpg");
+            OutputStream fOut = new FileOutputStream(file);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, fOut);
+            fOut.flush();
+            fOut.close();
+            MediaStore.Images.Media.insertImage(getContentResolver(), file.getAbsolutePath(),
+                    file.getName(), file.getName());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }
