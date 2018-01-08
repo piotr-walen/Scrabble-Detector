@@ -1,5 +1,4 @@
 package com.example.piotr.scrabble_detector;
-
 import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.Intent;
@@ -14,20 +13,12 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.Toast;
-
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
 import org.opencv.core.CvException;
-import org.opencv.core.CvType;
 import org.opencv.core.Mat;
-import org.opencv.core.MatOfPoint;
-import org.opencv.core.MatOfPoint2f;
-import org.opencv.core.Point;
-import org.opencv.core.Size;
-import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -132,7 +123,14 @@ public class MainActivity extends Activity {
                 case LoaderCallbackInterface.SUCCESS: {
                     Log.i("OpenCV", "OpenCV loaded successfully");
                     try {
-                        imageProcessing();
+                        Mat outputMat = ImageProcessing.processBitmap(bitmap);
+                        List<Mat> slices = ImageProcessing.sliceMat(outputMat);
+
+                        Bitmap outputBitmap = Bitmap.createBitmap(outputMat.cols(), outputMat.rows(),
+                                Bitmap.Config.RGB_565);
+                        Utils.matToBitmap(outputMat, outputBitmap);
+                        imageView.setImageBitmap(outputBitmap);
+                        saveImage(outputBitmap);
                     } catch (CvException e) {
                         Log.d("Exception", e.getMessage());
                     }
@@ -145,131 +143,6 @@ public class MainActivity extends Activity {
             }
         }
     };
-
-    private void imageProcessing() {
-        Mat sourceImageMat = new Mat(bitmap.getWidth(), bitmap.getHeight(), CvType.CV_8UC1);
-        Utils.bitmapToMat(bitmap, sourceImageMat);
-        Mat imageMat = sourceImageMat.clone();
-        Imgproc.cvtColor(imageMat, imageMat, Imgproc.COLOR_RGB2GRAY);
-        Imgproc.blur(imageMat, imageMat, new Size(7, 7));
-        Imgproc.Canny(imageMat, imageMat, 10.0, 100.0);
-        Mat element = Imgproc.getStructuringElement(Imgproc.MORPH_RECT,
-                new Size(5, 5));
-        Imgproc.dilate(imageMat, imageMat, element);
-        List<MatOfPoint> contours = new ArrayList<>();
-        Imgproc.findContours(imageMat, contours, new Mat(), Imgproc.RETR_LIST,
-                Imgproc.CHAIN_APPROX_SIMPLE);
-        if(!contours.isEmpty()){
-            MatOfPoint contour = findMaxAreaContour(contours);
-            MatOfPoint approxContour = squareContour(contour);
-            List<Point> points = approxContour.toList();
-            Log.i("OpenCV", "points = " + points.toString());
-            Log.i("OpenCV", "number of points = " + Integer.toString(points.size()));
-
-            if(points.size() == 4){
-                Point middlePoint = findCenterPoint(points);
-                Log.i("OpenCV", "middle point = " + middlePoint.toString());
-                List<Point> sortedPoints = sortPointsClockwise(points);
-                Log.i("OpenCV", "sorted points = " + sortedPoints.toString());
-                warpImage(sortedPoints,sourceImageMat,imageMat);
-
-            } else {
-                Toast.makeText(this, "Failed to find correct contour!", Toast.LENGTH_SHORT).show();
-                Log.e("OpenCV", "Failed to find correct contour.");
-            }
-        } else {
-            Toast.makeText(this, "Failed to find contour!", Toast.LENGTH_SHORT).show();
-            Log.e("OpenCV", "Failed to find contour");
-        }
-        Mat outputMat = imageMat.clone();
-        Bitmap output_bitmap = Bitmap.createBitmap(outputMat.cols(), outputMat.rows(),
-                Bitmap.Config.RGB_565);
-        Utils.matToBitmap(outputMat, output_bitmap);
-        drawOnImageView(output_bitmap);
-        saveImage(output_bitmap);
-    }
-
-
-
-    private MatOfPoint findMaxAreaContour (List<MatOfPoint > contours){
-        MatOfPoint contour = contours.get(0);
-        for (MatOfPoint c : contours) {
-            if (Imgproc.contourArea(c) > Imgproc.contourArea(contour)) {
-                contour = c;
-            }
-        }
-        return contour;
-    }
-
-    private MatOfPoint squareContour(MatOfPoint contour){
-        MatOfPoint2f contour2f = new MatOfPoint2f();
-        contour.convertTo(contour2f, CvType.CV_32FC2);
-        double epsilon = 0.01 * Imgproc.arcLength(contour2f, true);
-        MatOfPoint2f approxContour2f = new MatOfPoint2f();
-        Imgproc.approxPolyDP(contour2f, approxContour2f, epsilon, true);
-        MatOfPoint approxContour = new MatOfPoint();
-        approxContour2f.convertTo(approxContour, CvType.CV_32S);
-        return  approxContour;
-    }
-
-
-    private Point findCenterPoint(List<Point> points) {
-        int sumX = 0;
-        int sumY = 0;
-        int n = points.size();
-        for (Point point : points) {
-            sumX += point.x;
-            sumY += point.y;
-        }
-        return new Point(sumX / n, sumY / n);
-    }
-
-    private List<Point> sortPointsClockwise(List<Point> points) {
-        Point centerPoint = findCenterPoint(points);
-        double x_center = centerPoint.x;
-        double y_center = centerPoint.y;
-
-        List<Point> sortedPoints = new ArrayList<>();
-        if (points.size() == 4) {
-            for (Point point : points) {
-                if (point.x <= x_center && point.y <= y_center) {
-                    sortedPoints.add(0, point);
-                } else if (point.x <= x_center && point.y > y_center) {
-                    sortedPoints.add(1, point);
-                } else if (point.x > x_center && point.y > y_center) {
-                    sortedPoints.add(2, point);
-                } else if (point.x > x_center && point.y <= y_center) {
-                    sortedPoints.add(3, point);
-                }
-            }
-        }
-
-        return sortedPoints;
-    }
-
-    private void warpImage(List<Point> sortedPoints, Mat sourceImageMat, Mat imageMat){
-        MatOfPoint2f src = new MatOfPoint2f();
-        src.fromList(sortedPoints);
-        Log.i("OpenCV", "warping... source points = " + src.toString());
-
-        double size = 300;
-        MatOfPoint2f dst = new MatOfPoint2f(
-                new Point(0, 0),
-                new Point(size, 0),
-                new Point(size, size),
-                new Point(0, size)
-        );
-
-        Log.i("OpenCV", "warping... destination points = " + dst.toString());
-        Mat M = Imgproc.getPerspectiveTransform(src, dst);
-        Imgproc.warpPerspective(sourceImageMat, imageMat, M, new Size(size, size));
-        Log.i("OpenCV", "Image has been warped");
-
-    }
-
-    private void drawOnImageView(Bitmap bitmap) {
-        imageView.setImageBitmap(bitmap);
-    }
 
     private void saveImage(Bitmap bitmap) {
         try {
@@ -285,4 +158,5 @@ public class MainActivity extends Activity {
             e.printStackTrace();
         }
     }
+
 }
