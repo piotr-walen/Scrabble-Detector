@@ -48,7 +48,7 @@ public class MainActivity extends Activity {
                 imageUri = Uri.fromFile(photo);
                 startActivityForResult(intent, REQUEST_IMAGE_CAPTURE);
             }
-        });
+        }); 
         Button btnGallery = findViewById(R.id.gallery_button);
         btnGallery.setOnClickListener(new View.OnClickListener() {
             @Override
