@@ -23,6 +23,7 @@ import org.opencv.core.Mat;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends Activity {
@@ -32,6 +33,9 @@ public class MainActivity extends Activity {
     private ImageView imageView;
     private Bitmap bitmap;
     private Uri imageUri;
+    private List<Classifier> mClassifiers = new ArrayList<>();
+    private int INPUT_IMAGE_SIZE = 64;
+
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -142,6 +146,24 @@ public class MainActivity extends Activity {
             }
         }
     };
+
+    private void loadModel() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    mClassifiers.add(
+                            TileClassifier.create(getAssets(), "TileClassifier",
+                                    "opt_mnist_convnet-tf.pb", "labels.txt",
+                                    INPUT_IMAGE_SIZE, "input", "output",
+                                    true));
+                } catch (final Exception e) {
+                    throw new RuntimeException("Error initializing classifiers!", e);
+                }
+            }
+        }).start();
+    }
+
 
     private void saveImage(Bitmap bitmap) {
         try {
