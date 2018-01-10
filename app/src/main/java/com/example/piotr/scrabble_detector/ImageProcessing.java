@@ -2,6 +2,7 @@ package com.example.piotr.scrabble_detector;
 
 import android.graphics.Bitmap;
 import android.util.Log;
+
 import org.opencv.android.Utils;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -11,6 +12,7 @@ import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,19 +32,19 @@ class ImageProcessing {
         List<MatOfPoint> contours = new ArrayList<>();
         Imgproc.findContours(imageMat, contours, new Mat(), Imgproc.RETR_LIST,
                 Imgproc.CHAIN_APPROX_SIMPLE);
-        if(!contours.isEmpty()){
+        if (!contours.isEmpty()) {
             MatOfPoint contour = findMaxAreaContour(contours);
             MatOfPoint approxContour = squareContour(contour);
             List<Point> points = approxContour.toList();
             Log.i("OpenCV", "points = " + points.toString());
             Log.i("OpenCV", "number of points = " + Integer.toString(points.size()));
 
-            if(points.size() == 4){
+            if (points.size() == 4) {
                 Point middlePoint = findCenterPoint(points);
                 Log.i("OpenCV", "middle point = " + middlePoint.toString());
                 List<Point> sortedPoints = sortPointsClockwise(points);
                 Log.i("OpenCV", "sorted points = " + sortedPoints.toString());
-                warpImage(sortedPoints,sourceImageMat,imageMat);
+                warpImage(sortedPoints, sourceImageMat, imageMat);
 
             } else {
                 Log.e("OpenCV", "Failed to find correct contour.");
@@ -54,8 +56,7 @@ class ImageProcessing {
     }
 
 
-
-    private static MatOfPoint findMaxAreaContour (List<MatOfPoint > contours){
+    private static MatOfPoint findMaxAreaContour(List<MatOfPoint> contours) {
         MatOfPoint contour = contours.get(0);
         for (MatOfPoint c : contours) {
             if (Imgproc.contourArea(c) > Imgproc.contourArea(contour)) {
@@ -65,7 +66,7 @@ class ImageProcessing {
         return contour;
     }
 
-    private static MatOfPoint squareContour(MatOfPoint contour){
+    private static MatOfPoint squareContour(MatOfPoint contour) {
         MatOfPoint2f contour2f = new MatOfPoint2f();
         contour.convertTo(contour2f, CvType.CV_32FC2);
         double epsilon = 0.01 * Imgproc.arcLength(contour2f, true);
@@ -73,7 +74,7 @@ class ImageProcessing {
         Imgproc.approxPolyDP(contour2f, approxContour2f, epsilon, true);
         MatOfPoint approxContour = new MatOfPoint();
         approxContour2f.convertTo(approxContour, CvType.CV_32S);
-        return  approxContour;
+        return approxContour;
     }
 
     private static Point findCenterPoint(List<Point> points) {
@@ -110,7 +111,7 @@ class ImageProcessing {
         return sortedPoints;
     }
 
-    private static void warpImage(List<Point> sortedPoints, Mat sourceImageMat, Mat imageMat){
+    private static void warpImage(List<Point> sortedPoints, Mat sourceImageMat, Mat imageMat) {
         MatOfPoint2f src = new MatOfPoint2f();
         src.fromList(sortedPoints);
         Log.i("OpenCV", "warping... source points = " + src.toString());
@@ -129,16 +130,16 @@ class ImageProcessing {
         Log.i("OpenCV", "Image has been warped");
     }
 
-    static ArrayList<Mat> sliceMat(Mat image){
+    static ArrayList<Mat> sliceMat(Mat image) {
         int width = image.width();
         int height = image.height();
         ArrayList<Mat> slices = new ArrayList<>();
 
-        for(int x = 0; x < width; x += width/15){
-            for(int y = 0; y < height; y += height/15){
-                Point p1 = new Point(x,y);
-                Point p2 = new Point(p1.x+width,p1.y+height);
-                Rect rectCrop = new Rect(p1.x, p1.y , (p2.x-p1.x+1), (p2.y-p1.y+1));
+        for (int x = 0; x < width; x += width / 15) {
+            for (int y = 0; y < height; y += height / 15) {
+                Point p1 = new Point(x, y);
+                Point p2 = new Point(p1.x + width, p1.y + height);
+                Rect rectCrop = new Rect(p1.x, p1.y, (p2.x - p1.x + 1), (p2.y - p1.y + 1));
                 slices.add(image.submat(rectCrop));
             }
         }
