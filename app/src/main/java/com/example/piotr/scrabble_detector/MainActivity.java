@@ -23,7 +23,6 @@ import org.opencv.core.Mat;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
-import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends Activity {
