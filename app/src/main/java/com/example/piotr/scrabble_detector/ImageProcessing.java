@@ -18,6 +18,7 @@ import java.util.List;
 
 class ImageProcessing {
 
+    static final int INPUT_IMAGE_SIZE = 64;
 
     static Mat processBitmap(Bitmap bitmap) {
         Mat sourceImageMat = new Mat(bitmap.getWidth(), bitmap.getHeight(), CvType.CV_8UC1);
@@ -134,7 +135,7 @@ class ImageProcessing {
         int width = image.width();
         int height = image.height();
         ArrayList<Mat> slices = new ArrayList<>();
-        Size size = new Size(64,64);
+        Size size = new Size(INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE);
 
         for (int x = 0; x < width; x += width / 15) {
             for (int y = 0; y < height; y += height / 15) {

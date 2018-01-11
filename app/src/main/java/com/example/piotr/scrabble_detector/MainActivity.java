@@ -34,7 +34,6 @@ public class MainActivity extends Activity {
     private Bitmap bitmap;
     private Uri imageUri;
     private List<Classifier> mClassifiers = new ArrayList<>();
-    private int INPUT_IMAGE_SIZE = 64;
 
 
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,7 +60,7 @@ public class MainActivity extends Activity {
                 startActivityForResult(i, RESULT_LOAD_IMAGE);
             }
         });
-        imageView = (ImageView) findViewById(R.id.imageView);
+        imageView = findViewById(R.id.imageView);
     }
 
     @Override
@@ -155,7 +154,7 @@ public class MainActivity extends Activity {
                     mClassifiers.add(
                             TileClassifier.create(getAssets(), "TileClassifier",
                                     "opt_mnist_convnet-tf.pb", "labels.txt",
-                                    INPUT_IMAGE_SIZE, "input", "output",
+                                    ImageProcessing.INPUT_IMAGE_SIZE, "input", "output",
                                     true));
                 } catch (final Exception e) {
                     throw new RuntimeException("Error initializing classifiers!", e);
