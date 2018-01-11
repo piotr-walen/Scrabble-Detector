@@ -1,3 +1,5 @@
+import tensorflow as tf
+from keras import backend as K
 def export_model(saver, model, input_node_names, output_node_name):
     tf.train.write_graph(K.get_session().graph_def, 'out', \
         MODEL_NAME + '_graph.pbtxt')
@@ -14,7 +16,7 @@ def export_model(saver, model, input_node_names, output_node_name):
         input_graph_def.ParseFromString(f.read())
 
     output_graph_def = optimize_for_inference_lib.optimize_for_inference(
-            input_graph_def, [input_node_names], [output_node_name],
+            input_graph_def, input_node_names, [output_node_name],
             tf.float32.as_datatype_enum)
 
     with tf.gfile.FastGFile('out/opt_' + MODEL_NAME + '.pb', "wb") as f:

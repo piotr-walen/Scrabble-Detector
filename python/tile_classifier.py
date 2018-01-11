@@ -78,6 +78,7 @@ class TileClassifier():
         arr = np.array(indexes).reshape(15, 15)
         return arr
 
+   
 if __name__ == '__main__':
 
     model_path ='models/tile_classifier.h5'
