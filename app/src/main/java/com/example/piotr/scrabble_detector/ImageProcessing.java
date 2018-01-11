@@ -134,13 +134,16 @@ class ImageProcessing {
         int width = image.width();
         int height = image.height();
         ArrayList<Mat> slices = new ArrayList<>();
+        Size size = new Size(64,64);
 
         for (int x = 0; x < width; x += width / 15) {
             for (int y = 0; y < height; y += height / 15) {
                 Point p1 = new Point(x, y);
                 Point p2 = new Point(p1.x + width, p1.y + height);
                 Rect rectCrop = new Rect(p1.x, p1.y, (p2.x - p1.x + 1), (p2.y - p1.y + 1));
-                slices.add(image.submat(rectCrop));
+                Mat slice = image.submat(rectCrop);
+                Imgproc.resize(slice,slice,size);
+                slices.add(slice);
             }
         }
 

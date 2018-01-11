@@ -37,7 +37,8 @@ public class TileClassifier implements Classifier {
     }
 
     public static TileClassifier create(AssetManager assetManager, String name,
-                                              String modelPath, String labelFile, int inputSize, String inputName, String outputName,
+                                              String modelPath, String labelFile, int inputSize,
+                                        String inputName, String outputName,
                                               boolean feedKeepProb) throws IOException {
         TileClassifier c = new TileClassifier();
 
