@@ -1,4 +1,5 @@
 package com.example.piotr.scrabble_detector;
+
 import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.Intent;
@@ -13,6 +14,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
@@ -24,6 +26,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class MainActivity extends Activity {
@@ -61,6 +64,8 @@ public class MainActivity extends Activity {
             }
         });
         imageView = findViewById(R.id.imageView);
+        Log.i("TensorFlow", "loading model");
+        loadModel();
     }
 
     @Override
@@ -86,7 +91,7 @@ public class MainActivity extends Activity {
             Log.i("Gallery", "Opening gallery");
             Uri selectedImage = data.getData();
             String[] filePathColumn = {MediaStore.Images.Media.DATA};
-            if(selectedImage != null) {
+            if (selectedImage != null) {
                 try {
                     Cursor cursor = getContentResolver().query(selectedImage,
                             filePathColumn, null, null, null);
@@ -99,7 +104,7 @@ public class MainActivity extends Activity {
                         bitmap = ExifUtil.rotateBitmap(mCurrentPhotoPath, bitmap);
                         launchOpenCV();
                     }
-                } catch (Exception e){
+                } catch (Exception e) {
                     Log.e("Gallery", e.toString());
                 }
             }
@@ -126,13 +131,12 @@ public class MainActivity extends Activity {
                     Log.i("OpenCV", "OpenCV loaded successfully");
                     try {
                         Mat outputMat = ImageProcessing.processBitmap(bitmap);
-                        List<Mat> slices = ImageProcessing.sliceMat(outputMat);
-
-                        Bitmap outputBitmap = Bitmap.createBitmap(outputMat.cols(), outputMat.rows(),
-                                Bitmap.Config.RGB_565);
-                        Utils.matToBitmap(outputMat, outputBitmap);
+                        Bitmap outputBitmap = createBitmap(outputMat);
                         imageView.setImageBitmap(outputBitmap);
                         saveImage(outputBitmap);
+
+                        List<Mat> slices = ImageProcessing.sliceMat(outputMat);
+
                     } catch (CvException e) {
                         Log.d("Exception", e.getMessage());
                     }
@@ -153,16 +157,24 @@ public class MainActivity extends Activity {
                 try {
                     mClassifiers.add(
                             TileClassifier.create(getAssets(), "TileClassifier",
-                                    "opt_mnist_convnet-tf.pb", "labels.txt",
+                                    "frozen_tile_classifier.pb",
+                                    Arrays.asList("non-tile", "tile"),
                                     ImageProcessing.INPUT_IMAGE_SIZE, "input", "output",
                                     true));
                 } catch (final Exception e) {
+                    Log.e("TensorFlow", "Error initializing classifiers! " + e.toString());
                     throw new RuntimeException("Error initializing classifiers!", e);
                 }
             }
         }).start();
     }
 
+    private Bitmap createBitmap(Mat imageMat){
+        Bitmap outputBitmap = Bitmap.createBitmap(imageMat.cols(), imageMat.rows(),
+                Bitmap.Config.RGB_565);
+        Utils.matToBitmap(imageMat, outputBitmap);
+        return outputBitmap;
+    }
 
     private void saveImage(Bitmap bitmap) {
         try {

@@ -57,6 +57,27 @@ public class TileClassifier implements Classifier {
         return c;
     }
 
+    public static TileClassifier create(AssetManager assetManager, String name,
+                                        String modelPath, List<String> labels, int inputSize,
+                                        String inputName, String outputName,
+                                        boolean feedKeepProb) throws IOException {
+        TileClassifier c = new TileClassifier();
+
+        c.name = name;
+        c.inputName = inputName;
+        c.outputName = outputName;
+        c.labels = labels;
+        c.tfHelper = new TensorFlowInferenceInterface(assetManager, modelPath);
+        int numClasses = 10;
+        c.inputSize = inputSize;
+        c.outputNames = new String[] { outputName };
+        c.outputName = outputName;
+        c.output = new float[numClasses];
+        c.feedKeepProb = feedKeepProb;
+
+        return c;
+    }
+
     @Override
     public String name() {
         return name;
