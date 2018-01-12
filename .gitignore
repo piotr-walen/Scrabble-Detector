@@ -176,7 +176,6 @@ venv.bak/
 .mypy_cache/
 
 # End of https://www.gitignore.io/api/python,pycharm,jupyternotebook
-
 data/
 models/
 old/
@@ -193,6 +192,7 @@ import-summary.txt
 openCVLibrary300/
 app/src/test/
 app/src/androidTest
+app/src/main/assets/
 
 app/src/main/res/mipmap-hdpi/
 app/src/main/res/mipmap-mdpi/
