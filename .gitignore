@@ -190,7 +190,6 @@ local.properties
 settings.gradle
 import-summary.txt
 openCVLibrary300/
-app/src/test/
 app/src/androidTest
 app/src/main/assets/
 
