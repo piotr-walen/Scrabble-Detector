@@ -7,7 +7,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
-import android.service.quicksettings.Tile;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -21,6 +20,8 @@ import org.opencv.core.Mat;
 import org.opencv.core.Size;
 
 import java.io.File;
+import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends Activity {
@@ -31,7 +32,7 @@ public class MainActivity extends Activity {
     private ImageUtil imageUtil;
 
     private Classifier tileClassifier;
-    private static final int INPUT_SIZE = 224;
+    private static final int INPUT_SIZE = 64;
     private static final int IMAGE_MEAN = 117;
     private static final float IMAGE_STD = 1;
     private static final String INPUT_NAME = "conv2d_1_input";
@@ -76,7 +77,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if(resultCode == RESULT_OK ){
+        if (resultCode == RESULT_OK) {
             imageLoader.loadBitmap(requestCode, data);
             launchOpenCV();
         }
@@ -103,17 +104,38 @@ public class MainActivity extends Activity {
                 case LoaderCallbackInterface.SUCCESS: {
                     Log.i("OpenCV", "OpenCV loaded successfully");
                     try {
-                        Mat sourceMat = imageUtil.createMat(imageLoader.getBitmap());
-                        Mat outputMat = ImageProcessing.processBitmap(sourceMat);
-                        Bitmap outputBitmap = imageUtil.createBitmap(outputMat);
-                        imageView.setImageBitmap(outputBitmap);
-                        imageUtil.saveImage(outputBitmap,"output_image");
-                        List<Mat> slices = ImageProcessing.sliceMat(outputMat,size);
+//                        Mat sourceMat = imageUtil.createMat(imageLoader.getBitmap());
+//                        Mat outputMat = ImageProcessing.processBitmap(sourceMat);
+//                        Bitmap outputBitmap = imageUtil.createBitmap(outputMat);
+//                        imageUtil.saveImage(outputBitmap, "output_image");
 
 
-                        Mat slice = slices.get(0);
-                        Log.i("slice:",slice.toString());
-                        Log.i("slice:",slice.dump());
+                        Bitmap warped_bitmap = imageLoader.getBitmap();
+                        imageView.setImageBitmap(warped_bitmap);
+                        Mat outputMat = imageUtil.createMat(warped_bitmap);
+                        List<Mat> slices = ImageProcessing.sliceMat(outputMat, size);
+
+
+                        String[][] results = new String[15][15];
+                        for (int i = 0; i<slices.size(); i++) {
+                            Bitmap bitmap = imageUtil.createBitmap(slices.get(i));
+                            List<Classifier.Recognition> recognitions =
+                                    tileClassifier.recognizeImage(bitmap);
+                            for (Classifier.Recognition  recognition : recognitions) {
+                                results[i/15][i%15] = recognition.getId();
+                            }
+                        }
+
+                        StringBuilder stringBuilder = new StringBuilder();
+                        for (int i = 0; i<15; i++){
+                            for(int j = 0; j<15; j++){
+                                stringBuilder.append(results[i][j]);
+                            }
+                            stringBuilder.append("\n");
+                        }
+                        String result = stringBuilder.toString();
+                        Log.i("Recognition", result);
+
 
                     } catch (CvException e) {
                         Log.d("Exception", e.getMessage());
@@ -144,8 +166,9 @@ public class MainActivity extends Activity {
                             INPUT_NAME,
                             OUTPUT_NAME);
                 } catch (final Exception e) {
-                    Log.e("TensorFlow", "Error initializing classifiers! " + e.toString());
-                    throw new RuntimeException("Error initializing classifiers!", e);
+                    String error = "Error initializing classifiers! ";
+                    Log.e("TensorFlow", error + e.toString());
+                    throw new RuntimeException(error, e);
                 }
             }
         }).start();

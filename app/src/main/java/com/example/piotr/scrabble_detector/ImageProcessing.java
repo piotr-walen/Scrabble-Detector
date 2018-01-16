@@ -2,6 +2,7 @@ package com.example.piotr.scrabble_detector;
 
 import android.graphics.Bitmap;
 import android.util.Log;
+import android.widget.ImageView;
 
 import org.opencv.android.Utils;
 import org.opencv.core.CvType;
@@ -34,6 +35,7 @@ class ImageProcessing {
         if (!contours.isEmpty()) {
             MatOfPoint contour = findMaxAreaContour(contours);
             MatOfPoint approxContour = squareContour(contour);
+
             List<Point> points = approxContour.toList();
             Log.i("OpenCV", "points = " + points.toString());
             Log.i("OpenCV", "number of points = " + Integer.toString(points.size()));
@@ -70,15 +72,16 @@ class ImageProcessing {
     static MatOfPoint squareContour(MatOfPoint contour) {
         MatOfPoint2f contour2f = new MatOfPoint2f();
         contour.convertTo(contour2f, CvType.CV_32FC2);
-        double epsilon = 0.01 * Imgproc.arcLength(contour2f, true);
+        double epsilon = 0.03 * Imgproc.arcLength(contour2f, true);
         MatOfPoint2f approxContour2f = new MatOfPoint2f();
         Imgproc.approxPolyDP(contour2f, approxContour2f, epsilon, true);
         MatOfPoint approxContour = new MatOfPoint();
         approxContour2f.convertTo(approxContour, CvType.CV_32S);
+
         return approxContour;
     }
 
-     static Point findCenterPoint(List<Point> points) {
+    static Point findCenterPoint(List<Point> points) {
         int sumX = 0;
         int sumY = 0;
         int n = points.size();
@@ -89,7 +92,7 @@ class ImageProcessing {
         return new Point(sumX / n, sumY / n);
     }
 
-     static List<Point> sortPointsClockwise(List<Point> points) {
+    static List<Point> sortPointsClockwise(List<Point> points) {
         Point centerPoint = findCenterPoint(points);
         double x_center = centerPoint.x;
         double y_center = centerPoint.y;
@@ -132,18 +135,26 @@ class ImageProcessing {
     }
 
     static ArrayList<Mat> sliceMat(Mat image, Size size) {
+        Log.i("OpenCV", "image " + image.toString());
         ArrayList<Mat> slices = new ArrayList<>();
         int width = image.width();
         int height = image.height();
-        if(width > 0 && height > 0) {
-            for (int x = 0; x < width; x += width / 15) {
-                for (int y = 0; y < height; y += height / 15) {
-                    Point p1 = new Point(x, y);
-                    Point p2 = new Point(p1.x + width, p1.y + height);
-                    Rect rectCrop = new Rect(p1.x, p1.y, (p2.x - p1.x + 1), (p2.y - p1.y + 1));
-                    Mat slice = image.submat(rectCrop);
-                    Imgproc.resize(image,slice,size);
-                    slices.add(slice);
+        int slice_width = width/15;
+        int slice_height = height/15;
+
+        Log.i("OpenCV","slice_width= "+Integer.toString(slice_width) + " slice_height= "+ Integer.toString(slice_height));
+        if (width > 0 && height > 0) {
+            for (int i = 0; i<15; i++) {
+                for (int j = 0; j<15; j++) {
+                    int x = i*slice_width;
+                    int y = j*slice_height;
+                    Log.i("OpenCV", "x = " + Integer.toString(x) + " y = "+Integer.toString(y));
+                    Mat slice = image.submat(x,x+slice_width,y,y+slice_width);
+
+                    Log.i("OpenCV", "slice "+slice.toString());
+                    Mat outSlice = new Mat();
+                    Imgproc.resize(slice, outSlice, size);
+                    slices.add(outSlice);
                 }
             }
         }

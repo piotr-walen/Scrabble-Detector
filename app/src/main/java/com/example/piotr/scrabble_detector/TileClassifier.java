@@ -44,20 +44,21 @@ public class TileClassifier implements Classifier {
 
     private TensorFlowInferenceInterface inferenceInterface;
 
-    private TileClassifier() {}
+    private TileClassifier() {
+    }
 
 
     /**
      * Initializes a native TensorFlow session for classifying images.
      *
-     * @param assetManager The asset manager to be used to load assets.
+     * @param assetManager  The asset manager to be used to load assets.
      * @param modelFilename The filepath of the model GraphDef protocol buffer.
      * @param labelFilename The filepath of label file for classes.
-     * @param inputSize The input size. A square image of inputSize x inputSize is assumed.
-     * @param imageMean The assumed mean of the image values.
-     * @param imageStd The assumed std of the image values.
-     * @param inputName The label of the image input node.
-     * @param outputName The label of the output node.
+     * @param inputSize     The input size. A square image of inputSize x inputSize is assumed.
+     * @param imageMean     The assumed mean of the image values.
+     * @param imageStd      The assumed std of the image values.
+     * @param inputName     The label of the image input node.
+     * @param outputName    The label of the output node.
      * @throws IOException
      */
     public static Classifier create(
@@ -86,7 +87,7 @@ public class TileClassifier implements Classifier {
             }
             br.close();
         } catch (IOException e) {
-            throw new RuntimeException("Problem reading label file!" , e);
+            throw new RuntimeException("Problem reading label file!", e);
         }
 
         c.inferenceInterface = new TensorFlowInferenceInterface(assetManager, modelFilename);
@@ -104,7 +105,7 @@ public class TileClassifier implements Classifier {
         c.imageStd = imageStd;
 
         // Pre-allocate buffers.
-        c.outputNames = new String[] {outputName};
+        c.outputNames = new String[]{outputName};
         c.intValues = new int[inputSize * inputSize];
         c.floatValues = new float[inputSize * inputSize * 3];
         c.outputs = new float[numClasses];
@@ -123,15 +124,26 @@ public class TileClassifier implements Classifier {
         bitmap.getPixels(intValues, 0, bitmap.getWidth(), 0, 0, bitmap.getWidth(), bitmap.getHeight());
         for (int i = 0; i < intValues.length; ++i) {
             final int val = intValues[i];
-            floatValues[i * 3 + 0] = (((val >> 16) & 0xFF) - imageMean) / imageStd;
-            floatValues[i * 3 + 1] = (((val >> 8) & 0xFF) - imageMean) / imageStd;
-            floatValues[i * 3 + 2] = ((val & 0xFF) - imageMean) / imageStd;
+//            floatValues[i * 3 + 0] = (((val >> 16) & 0xFF) - imageMean) / imageStd;
+//            floatValues[i * 3 + 1] = (((val >> 8) & 0xFF) - imageMean) / imageStd;
+//            floatValues[i * 3 + 2] = ((val & 0xFF) - imageMean) / imageStd;
+            floatValues[i * 3 + 0] = (float) (((val >> 16) & 0xFF)) / 255;
+            floatValues[i * 3 + 1] = (float) (((val >> 8) & 0xFF)) / 255;
+            floatValues[i * 3 + 2] = (float) ((val & 0xFF)) / 255;
+        }
+        for (float val : floatValues) {
+            if (val < 0 || val > 1) Log.w("val outside range", "warning");
         }
         Trace.endSection();
 
         // Copy the input data into TensorFlow.
         Trace.beginSection("feed");
+        Log.i("float values length", Integer.toString(floatValues.length));
         inferenceInterface.feed(inputName, floatValues, 1, inputSize, inputSize, 3);
+        inferenceInterface.feed(
+                "dropout_1/keras_learning_phase",
+                new boolean[]{false}
+        );
         Trace.endSection();
 
         // Run the inference call.
