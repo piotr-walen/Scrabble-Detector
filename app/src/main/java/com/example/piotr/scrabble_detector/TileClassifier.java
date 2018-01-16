@@ -4,104 +4,185 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.PriorityQueue;
+import java.util.Vector;
+
 import android.content.res.AssetManager;
+import android.graphics.Bitmap;
+import android.os.Trace;
+import android.util.Log;
+
+import org.tensorflow.Operation;
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
 
 
 public class TileClassifier implements Classifier {
-    private static final float THRESHOLD = 0.1f;
-    private TensorFlowInferenceInterface tfHelper;
 
-    private String name;
+    private static final String TAG = "TileClassifier";
+
+    // Only return this many results with at least this confidence.
+    private static final int MAX_RESULTS = 3;
+    private static final float THRESHOLD = 0.1f;
+
+    // Config values.
     private String inputName;
     private String outputName;
     private int inputSize;
-    private boolean feedKeepProb;
+    private int imageMean;
+    private float imageStd;
 
-    private List<String> labels;
-    private float[] output;
+    // Pre-allocated buffers.
+    private Vector<String> labels = new Vector<String>();
+    private int[] intValues;
+    private float[] floatValues;
+    private float[] outputs;
     private String[] outputNames;
 
-    private static List<String> readLabels(AssetManager am, String fileName) throws IOException {
-        BufferedReader br = new BufferedReader(new InputStreamReader(am.open(fileName)));
+    private boolean logStats = false;
 
-        String line;
-        List<String> labels = new ArrayList<>();
-        while ((line = br.readLine()) != null) {
-            labels.add(line);
+    private TensorFlowInferenceInterface inferenceInterface;
+
+    private TileClassifier() {}
+
+
+    /**
+     * Initializes a native TensorFlow session for classifying images.
+     *
+     * @param assetManager The asset manager to be used to load assets.
+     * @param modelFilename The filepath of the model GraphDef protocol buffer.
+     * @param labelFilename The filepath of label file for classes.
+     * @param inputSize The input size. A square image of inputSize x inputSize is assumed.
+     * @param imageMean The assumed mean of the image values.
+     * @param imageStd The assumed std of the image values.
+     * @param inputName The label of the image input node.
+     * @param outputName The label of the output node.
+     * @throws IOException
+     */
+    public static Classifier create(
+            AssetManager assetManager,
+            String modelFilename,
+            String labelFilename,
+            int inputSize,
+            int imageMean,
+            float imageStd,
+            String inputName,
+            String outputName) {
+        TileClassifier c = new TileClassifier();
+        c.inputName = inputName;
+        c.outputName = outputName;
+
+        // Read the label names into memory.
+        // TODO(andrewharp): make this handle non-assets.
+        String actualFilename = labelFilename.split("file:///android_asset/")[1];
+        Log.i(TAG, "Reading labels from: " + actualFilename);
+        BufferedReader br = null;
+        try {
+            br = new BufferedReader(new InputStreamReader(assetManager.open(actualFilename)));
+            String line;
+            while ((line = br.readLine()) != null) {
+                c.labels.add(line);
+            }
+            br.close();
+        } catch (IOException e) {
+            throw new RuntimeException("Problem reading label file!" , e);
         }
 
-        br.close();
-        return labels;
-    }
+        c.inferenceInterface = new TensorFlowInferenceInterface(assetManager, modelFilename);
 
-    public static TileClassifier create(AssetManager assetManager, String name,
-                                              String modelPath, String labelFile, int inputSize,
-                                        String inputName, String outputName,
-                                              boolean feedKeepProb) throws IOException {
-        TileClassifier c = new TileClassifier();
+        // The shape of the output is [N, NUM_CLASSES], where N is the batch size.
+        final Operation operation = c.inferenceInterface.graphOperation(outputName);
+        final int numClasses = (int) operation.output(0).shape().size(1);
+        Log.i(TAG, "Read " + c.labels.size() + " labels, output layer size is " + numClasses);
 
-        c.name = name;
-        c.inputName = inputName;
-        c.outputName = outputName;
-        c.labels = readLabels(assetManager, labelFile);
-        c.tfHelper = new TensorFlowInferenceInterface(assetManager, modelPath);
-        int numClasses = 10;
+        // Ideally, inputSize could have been retrieved from the shape of the input operation.  Alas,
+        // the placeholder node for input in the graphdef typically used does not specify a shape, so it
+        // must be passed in as a parameter.
         c.inputSize = inputSize;
-        c.outputNames = new String[] { outputName };
-        c.outputName = outputName;
-        c.output = new float[numClasses];
-        c.feedKeepProb = feedKeepProb;
+        c.imageMean = imageMean;
+        c.imageStd = imageStd;
 
-        return c;
-    }
-
-    public static TileClassifier create(AssetManager assetManager, String name,
-                                        String modelPath, List<String> labels, int inputSize,
-                                        String inputName, String outputName,
-                                        boolean feedKeepProb) throws IOException {
-        TileClassifier c = new TileClassifier();
-
-        c.name = name;
-        c.inputName = inputName;
-        c.outputName = outputName;
-        c.labels = labels;
-        c.tfHelper = new TensorFlowInferenceInterface(assetManager, modelPath);
-        int numClasses = 10;
-        c.inputSize = inputSize;
-        c.outputNames = new String[] { outputName };
-        c.outputName = outputName;
-        c.output = new float[numClasses];
-        c.feedKeepProb = feedKeepProb;
+        // Pre-allocate buffers.
+        c.outputNames = new String[] {outputName};
+        c.intValues = new int[inputSize * inputSize];
+        c.floatValues = new float[inputSize * inputSize * 3];
+        c.outputs = new float[numClasses];
 
         return c;
     }
 
     @Override
-    public String name() {
-        return name;
-    }
+    public List<Recognition> recognizeImage(final Bitmap bitmap) {
+        // Log this method so that it can be analyzed with systrace.
+        Trace.beginSection("recognizeImage");
 
-    @Override
-    public Classification recognize(final float[] pixels) {
-
-        tfHelper.feed(inputName, pixels, 1, inputSize, inputSize, 1);
-        if (feedKeepProb) {
-            tfHelper.feed("keep_prob", new float[] { 1 });
+        Trace.beginSection("preprocessBitmap");
+        // Preprocess the image data from 0-255 int to normalized float based
+        // on the provided parameters.
+        bitmap.getPixels(intValues, 0, bitmap.getWidth(), 0, 0, bitmap.getWidth(), bitmap.getHeight());
+        for (int i = 0; i < intValues.length; ++i) {
+            final int val = intValues[i];
+            floatValues[i * 3 + 0] = (((val >> 16) & 0xFF) - imageMean) / imageStd;
+            floatValues[i * 3 + 1] = (((val >> 8) & 0xFF) - imageMean) / imageStd;
+            floatValues[i * 3 + 2] = ((val & 0xFF) - imageMean) / imageStd;
         }
-        tfHelper.run(outputNames);
-        tfHelper.fetch(outputName, output);
-        Classification ans = new Classification();
-        for (int i = 0; i < output.length; ++i) {
-            System.out.println(output[i]);
-            System.out.println(labels.get(i));
-            if (output[i] > THRESHOLD && output[i] > ans.getConf()) {
-                ans.update(output[i], labels.get(i));
+        Trace.endSection();
+
+        // Copy the input data into TensorFlow.
+        Trace.beginSection("feed");
+        inferenceInterface.feed(inputName, floatValues, 1, inputSize, inputSize, 3);
+        Trace.endSection();
+
+        // Run the inference call.
+        Trace.beginSection("run");
+        inferenceInterface.run(outputNames, logStats);
+        Trace.endSection();
+
+        // Copy the output Tensor back into the output array.
+        Trace.beginSection("fetch");
+        inferenceInterface.fetch(outputName, outputs);
+        Trace.endSection();
+
+        // Find the best classifications.
+        PriorityQueue<Recognition> pq =
+                new PriorityQueue<Recognition>(
+                        3,
+                        new Comparator<Recognition>() {
+                            @Override
+                            public int compare(Recognition lhs, Recognition rhs) {
+                                // Intentionally reversed to put high confidence at the head of the queue.
+                                return Float.compare(rhs.getConfidence(), lhs.getConfidence());
+                            }
+                        });
+        for (int i = 0; i < outputs.length; ++i) {
+            if (outputs[i] > THRESHOLD) {
+                pq.add(
+                        new Recognition(
+                                "" + i, labels.size() > i ? labels.get(i) : "unknown", outputs[i], null));
             }
         }
-
-        return ans;
+        final ArrayList<Recognition> recognitions = new ArrayList<Recognition>();
+        int recognitionsSize = Math.min(pq.size(), MAX_RESULTS);
+        for (int i = 0; i < recognitionsSize; ++i) {
+            recognitions.add(pq.poll());
+        }
+        Trace.endSection(); // "recognizeImage"
+        return recognitions;
     }
 
+    @Override
+    public void enableStatLogging(boolean logStats) {
+        this.logStats = logStats;
+    }
+
+    @Override
+    public String getStatString() {
+        return inferenceInterface.getStatString();
+    }
+
+    @Override
+    public void close() {
+        inferenceInterface.close();
+    }
 }

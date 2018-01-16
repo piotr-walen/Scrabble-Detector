@@ -6,21 +6,27 @@ import android.os.Environment;
 import android.provider.MediaStore;
 
 import org.opencv.android.Utils;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 
-/**
- * Created by piotr on 1/16/18.
- */
-
-public class ImageUtils {
+class ImageUtil {
 
     private ContentResolver contentResolver;
-    public ImageUtils(ContentResolver contentResolver) {
+    ImageUtil(ContentResolver contentResolver) {
         this.contentResolver = contentResolver;
+    }
+
+    Mat createMat(Bitmap bitmap){
+        Mat imageMat = new Mat();
+        Utils.bitmapToMat(bitmap, imageMat);
+        Imgproc.cvtColor(imageMat,imageMat,Imgproc.COLOR_BGRA2BGR);
+
+        return imageMat;
     }
 
     Bitmap createBitmap(Mat imageMat){
@@ -30,15 +36,15 @@ public class ImageUtils {
         return outputBitmap;
     }
 
-    void saveImage(Bitmap bitmap) {
+    void saveImage(Bitmap bitmap, String fileName) {
         try {
             String path = Environment.getExternalStorageDirectory().toString();
-            File file = new File(path, "output_image.jpg");
+            File file = new File(path, fileName + ".jpg" );
             OutputStream fOut = new FileOutputStream(file);
             bitmap.compress(Bitmap.CompressFormat.JPEG, 85, fOut);
             fOut.flush();
             fOut.close();
-            MediaStore.Images.Media.insertImage(getContentResolver(), file.getAbsolutePath(),
+            MediaStore.Images.Media.insertImage(contentResolver, file.getAbsolutePath(),
                     file.getName(), file.getName());
         } catch (Exception e) {
             e.printStackTrace();

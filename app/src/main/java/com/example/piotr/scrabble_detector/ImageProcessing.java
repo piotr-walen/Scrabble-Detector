@@ -18,12 +18,9 @@ import java.util.List;
 
 class ImageProcessing {
 
-    static final int INPUT_IMAGE_SIZE = 64;
-    private static final Size size = new Size(INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE);
+    static Mat processBitmap(Mat sourceImageMat) {
+        Log.i("OpenCV", "Started bitmap processing");
 
-    static Mat processBitmap(Bitmap bitmap) {
-        Mat sourceImageMat = new Mat(bitmap.getWidth(), bitmap.getHeight(), CvType.CV_8UC1);
-        Utils.bitmapToMat(bitmap, sourceImageMat);
         Mat imageMat = sourceImageMat.clone();
         Imgproc.cvtColor(imageMat, imageMat, Imgproc.COLOR_RGB2GRAY);
         Imgproc.blur(imageMat, imageMat, new Size(7, 7));
@@ -54,11 +51,13 @@ class ImageProcessing {
         } else {
             Log.e("OpenCV", "Failed to find contour");
         }
+
+        Log.i("OpenCV", "Processed mat: " + imageMat.toString());
         return imageMat;
     }
 
 
-    private static MatOfPoint findMaxAreaContour(List<MatOfPoint> contours) {
+    static MatOfPoint findMaxAreaContour(List<MatOfPoint> contours) {
         MatOfPoint contour = contours.get(0);
         for (MatOfPoint c : contours) {
             if (Imgproc.contourArea(c) > Imgproc.contourArea(contour)) {
@@ -68,7 +67,7 @@ class ImageProcessing {
         return contour;
     }
 
-    private static MatOfPoint squareContour(MatOfPoint contour) {
+    static MatOfPoint squareContour(MatOfPoint contour) {
         MatOfPoint2f contour2f = new MatOfPoint2f();
         contour.convertTo(contour2f, CvType.CV_32FC2);
         double epsilon = 0.01 * Imgproc.arcLength(contour2f, true);
@@ -90,7 +89,7 @@ class ImageProcessing {
         return new Point(sumX / n, sumY / n);
     }
 
-    private static List<Point> sortPointsClockwise(List<Point> points) {
+     static List<Point> sortPointsClockwise(List<Point> points) {
         Point centerPoint = findCenterPoint(points);
         double x_center = centerPoint.x;
         double y_center = centerPoint.y;
@@ -113,7 +112,7 @@ class ImageProcessing {
         return sortedPoints;
     }
 
-    private static void warpImage(List<Point> sortedPoints, Mat sourceImageMat, Mat imageMat) {
+    static void warpImage(List<Point> sortedPoints, Mat sourceImageMat, Mat imageMat) {
         MatOfPoint2f src = new MatOfPoint2f();
         src.fromList(sortedPoints);
         Log.i("OpenCV", "warping... source points = " + src.toString());
@@ -132,7 +131,7 @@ class ImageProcessing {
         Log.i("OpenCV", "Image has been warped");
     }
 
-    static ArrayList<Mat> sliceMat(Mat image) {
+    static ArrayList<Mat> sliceMat(Mat image, Size size) {
         ArrayList<Mat> slices = new ArrayList<>();
         int width = image.width();
         int height = image.height();
