@@ -19,6 +19,7 @@ import java.util.List;
 class ImageProcessing {
 
     static final int INPUT_IMAGE_SIZE = 64;
+    private static final Size size = new Size(INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE);
 
     static Mat processBitmap(Bitmap bitmap) {
         Mat sourceImageMat = new Mat(bitmap.getWidth(), bitmap.getHeight(), CvType.CV_8UC1);
@@ -78,7 +79,7 @@ class ImageProcessing {
         return approxContour;
     }
 
-    private static Point findCenterPoint(List<Point> points) {
+     static Point findCenterPoint(List<Point> points) {
         int sumX = 0;
         int sumY = 0;
         int n = points.size();
@@ -136,8 +137,6 @@ class ImageProcessing {
         int width = image.width();
         int height = image.height();
         if(width > 0 && height > 0) {
-            Size size = new Size(INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE);
-
             for (int x = 0; x < width; x += width / 15) {
                 for (int y = 0; y < height; y += height / 15) {
                     Point p1 = new Point(x, y);
