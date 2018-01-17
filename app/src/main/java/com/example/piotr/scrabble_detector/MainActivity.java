@@ -161,8 +161,6 @@ public class MainActivity extends Activity {
                             MODEL_FILE,
                             LABEL_FILE,
                             INPUT_SIZE,
-                            IMAGE_MEAN,
-                            IMAGE_STD,
                             INPUT_NAME,
                             OUTPUT_NAME);
                 } catch (final Exception e) {
