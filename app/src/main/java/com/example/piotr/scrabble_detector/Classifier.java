@@ -82,7 +82,9 @@ public interface Classifier {
         }
     }
 
-    List<Recognition> recognizeImage(Bitmap bitmap);
+    Recognition recognizeImage(Bitmap bitmap);
+
+    List<Recognition> recognizeImages(List<Bitmap> bitmaps);
 
     void enableStatLogging(final boolean debug);
 

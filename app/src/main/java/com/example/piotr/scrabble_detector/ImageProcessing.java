@@ -148,10 +148,10 @@ class ImageProcessing {
                 for (int j = 0; j<15; j++) {
                     int x = i*slice_width;
                     int y = j*slice_height;
-                    Log.i("OpenCV", "x = " + Integer.toString(x) + " y = "+Integer.toString(y));
+                    //Log.i("OpenCV", "x = " + Integer.toString(x) + " y = "+Integer.toString(y));
                     Mat slice = image.submat(x,x+slice_width,y,y+slice_width);
 
-                    Log.i("OpenCV", "slice "+slice.toString());
+                    //Log.i("OpenCV", "slice "+slice.toString());
                     Mat outSlice = new Mat();
                     Imgproc.resize(slice, outSlice, size);
                     slices.add(outSlice);

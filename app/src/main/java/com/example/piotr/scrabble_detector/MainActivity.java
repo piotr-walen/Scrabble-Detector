@@ -20,7 +20,6 @@ import org.opencv.core.Mat;
 import org.opencv.core.Size;
 
 import java.io.File;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,8 +32,6 @@ public class MainActivity extends Activity {
 
     private Classifier tileClassifier;
     private static final int INPUT_SIZE = 64;
-    private static final int IMAGE_MEAN = 117;
-    private static final float IMAGE_STD = 1;
     private static final String INPUT_NAME = "conv2d_1_input";
     private static final String OUTPUT_NAME = "dense_2/Softmax";
 
@@ -109,33 +106,9 @@ public class MainActivity extends Activity {
 //                        Bitmap outputBitmap = imageUtil.createBitmap(outputMat);
 //                        imageUtil.saveImage(outputBitmap, "output_image");
 
-
-                        Bitmap warped_bitmap = imageLoader.getBitmap();
-                        imageView.setImageBitmap(warped_bitmap);
-                        Mat outputMat = imageUtil.createMat(warped_bitmap);
-                        List<Mat> slices = ImageProcessing.sliceMat(outputMat, size);
-
-
-                        String[][] results = new String[15][15];
-                        for (int i = 0; i<slices.size(); i++) {
-                            Bitmap bitmap = imageUtil.createBitmap(slices.get(i));
-                            List<Classifier.Recognition> recognitions =
-                                    tileClassifier.recognizeImage(bitmap);
-                            for (Classifier.Recognition  recognition : recognitions) {
-                                results[i/15][i%15] = recognition.getId();
-                            }
-                        }
-
-                        StringBuilder stringBuilder = new StringBuilder();
-                        for (int i = 0; i<15; i++){
-                            for(int j = 0; j<15; j++){
-                                stringBuilder.append(results[i][j]);
-                            }
-                            stringBuilder.append("\n");
-                        }
-                        String result = stringBuilder.toString();
-                        Log.i("Recognition", result);
-
+                        List<Bitmap> bitmaps = imageProcessing();
+                        List<Classifier.Recognition> recognitions = recognize(bitmaps,15*3);
+                        Log.i("Recognition", buildResultMatrix(recognitions));
 
                     } catch (CvException e) {
                         Log.d("Exception", e.getMessage());
@@ -149,6 +122,48 @@ public class MainActivity extends Activity {
             }
         }
     };
+
+
+    private List<Bitmap> imageProcessing(){
+        Bitmap warped_bitmap = imageLoader.getBitmap();
+        imageView.setImageBitmap(warped_bitmap);
+        Mat outputMat = imageUtil.createMat(warped_bitmap);
+        List<Mat> slices = ImageProcessing.sliceMat(outputMat, size);
+        List<Bitmap> bitmaps = new ArrayList<>();
+        for (int i = 0; i<slices.size(); i++) {
+            Bitmap bitmap = imageUtil.createBitmap(slices.get(i));
+            bitmaps.add(bitmap);
+        }
+
+        return bitmaps;
+    }
+
+    private List<Classifier.Recognition> recognize(List<Bitmap> bitmaps, int batchSize) {
+        //int batchSize = 15*5;
+        List<Classifier.Recognition> recognitions = new ArrayList<>();
+        for(int i = 0; i<15*15/batchSize; i++){
+            List<Bitmap> batchOfBitmaps = bitmaps.subList(i*batchSize,i*batchSize+batchSize);
+            List<Classifier.Recognition> batchRecognition = tileClassifier.recognizeImages(batchOfBitmaps);
+            recognitions.addAll(batchRecognition);
+        }
+        return recognitions;
+    }
+
+    private String buildResultMatrix(List<Classifier.Recognition> recognitions){
+        String[][] results = new String[15][15];
+        for (int i = 0; i<15*15; i++) {
+            results[i/15][i%15] = recognitions.get(i).getId();
+        }
+
+        StringBuilder stringBuilder = new StringBuilder();
+        for (int i = 0; i<15; i++){
+            for(int j = 0; j<15; j++){
+                stringBuilder.append(results[i][j]);
+            }
+            stringBuilder.append("\n");
+        }
+        return stringBuilder.toString();
+    }
 
     private void loadModel() {
         Log.i("TensorFlow", "loading model");
