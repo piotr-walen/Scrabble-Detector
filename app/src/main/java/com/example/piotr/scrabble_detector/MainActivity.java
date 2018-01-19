@@ -12,12 +12,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 
-import org.opencv.android.BaseLoaderCallback;
-import org.opencv.android.LoaderCallbackInterface;
-import org.opencv.android.OpenCVLoader;
 import org.opencv.core.CvException;
-import org.opencv.core.Mat;
-import org.opencv.core.Size;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,7 +26,7 @@ public class MainActivity extends Activity {
     private ImageUtil imageUtil;
     private Uri imageUri;
     private Bitmap bitmap;
-
+    private OpenCVUtil openCVUtil;
 
     private Classifier tileClassifier;
     private static final int INPUT_SIZE = 64;
@@ -41,11 +36,13 @@ public class MainActivity extends Activity {
     private static final String MODEL_FILE = "file:///android_asset/frozen_tile_classifier.pb";
     private static final String LABEL_FILE = "file:///android_asset/tile_labels.txt";
 
-
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        imageUtil = new ImageUtil(getContentResolver());
+        openCVUtil = new OpenCVUtil(this);
+        openCVUtil.loadOpenCV();
 
+
+        imageUtil = new ImageUtil(getContentResolver());
         setContentView(R.layout.activity_capture_image);
         Button btnCamera = findViewById(R.id.camera_button);
         btnCamera.setOnClickListener(new View.OnClickListener() {
@@ -81,7 +78,7 @@ public class MainActivity extends Activity {
                 try {
                     Log.i("Camera", "Opening camera");
                     imageUtil.loadBitmapFromCamera(imageUri);
-                    launchOpenCV();
+                    launch();
                 } catch (IOException e) {
                     Log.e("IO", "Failed to load image from camera " + e.toString());
                 }
@@ -90,67 +87,45 @@ public class MainActivity extends Activity {
                 Log.i("Gallery", "Opening gallery");
                 imageUri = data.getData();
                 bitmap = imageUtil.loadBitmapFromGallery(imageUri);
-                launchOpenCV();
+                launch();
             }
         }
     }
 
-    private void launchOpenCV() {
-        if (!OpenCVLoader.initDebug()) {
-            Log.d("OpenCV", "Internal OpenCV library not found. " +
-                    "Using OpenCV Manager for initialization");
-            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0,
-                    this, mLoaderCallback);
-        } else {
-            Log.d("OpenCV", "OpenCV library found inside package. Using it!");
-            mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
+    private void launch(){
+        try {
+            List<Bitmap> bitmaps = ImageProcessing.process(bitmap, INPUT_SIZE);
+            List<Classifier.Recognition> recognitions = recognize(bitmaps,15*3);
+            Log.i("Recognition", buildResultMatrix(recognitions));
+
+        } catch (CvException e) {
+            Log.d("Exception", e.getMessage());
         }
     }
 
-    private static final int INPUT_IMAGE_SIZE = 64;
-    private static final Size size = new Size(INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE);
-    private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
-        @Override
-        public void onManagerConnected(int status) {
-            switch (status) {
-                case LoaderCallbackInterface.SUCCESS: {
-                    Log.i("OpenCV", "OpenCV loaded successfully");
-                    try {
-//                        Mat sourceMat = imageUtil.createMat(imageLoader.getBitmap());
-//                        Mat outputMat = ImageProcessing.processBitmap(sourceMat);
-//                        Bitmap outputBitmap = imageUtil.createBitmap(outputMat);
-//                        imageUtil.saveImage(outputBitmap, "output_image");
 
-                        List<Bitmap> bitmaps = imageProcessing();
-                        List<Classifier.Recognition> recognitions = recognize(bitmaps,15*3);
-                        Log.i("Recognition", buildResultMatrix(recognitions));
-
-                    } catch (CvException e) {
-                        Log.d("Exception", e.getMessage());
-                    }
+    private void loadModel() {
+        Log.i("TensorFlow", "loading model");
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    tileClassifier = TileClassifier.create(
+                            getAssets(),
+                            MODEL_FILE,
+                            LABEL_FILE,
+                            INPUT_SIZE,
+                            INPUT_NAME,
+                            OUTPUT_NAME);
+                } catch (final Exception e) {
+                    String error = "Error initializing classifiers! ";
+                    Log.e("TensorFlow", error + e.toString());
+                    throw new RuntimeException(error, e);
                 }
-                break;
-                default: {
-                    super.onManagerConnected(status);
-                }
-                break;
             }
-        }
-    };
-
-
-    private List<Bitmap> imageProcessing(){
-        imageView.setImageBitmap(bitmap);
-        Mat outputMat = imageUtil.createMat(bitmap);
-        List<Mat> slices = ImageProcessing.sliceMat(outputMat, size);
-        List<Bitmap> bitmaps = new ArrayList<>();
-        for (int i = 0; i<slices.size(); i++) {
-            Bitmap bitmap = imageUtil.createBitmap(slices.get(i));
-            bitmaps.add(bitmap);
-        }
-
-        return bitmaps;
+        }).start();
     }
+
 
     private List<Classifier.Recognition> recognize(List<Bitmap> bitmaps, int batchSize) {
         //int batchSize = 15*5;
@@ -179,27 +154,6 @@ public class MainActivity extends Activity {
         return stringBuilder.toString();
     }
 
-    private void loadModel() {
-        Log.i("TensorFlow", "loading model");
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    tileClassifier = TileClassifier.create(
-                            getAssets(),
-                            MODEL_FILE,
-                            LABEL_FILE,
-                            INPUT_SIZE,
-                            INPUT_NAME,
-                            OUTPUT_NAME);
-                } catch (final Exception e) {
-                    String error = "Error initializing classifiers! ";
-                    Log.e("TensorFlow", error + e.toString());
-                    throw new RuntimeException(error, e);
-                }
-            }
-        }).start();
-    }
 
 
 }

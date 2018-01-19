@@ -192,7 +192,7 @@ import-summary.txt
 openCVLibrary300/
 app/src/androidTest
 app/src/main/assets/
-
+app/libs
 app/src/main/res/mipmap-hdpi/
 app/src/main/res/mipmap-mdpi/
 app/src/main/res/mipmap-xhdpi/

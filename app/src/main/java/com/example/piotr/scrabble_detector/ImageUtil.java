@@ -27,20 +27,7 @@ class ImageUtil {
         this.contentResolver = contentResolver;
     }
 
-    Mat createMat(Bitmap bitmap){
-        Mat imageMat = new Mat();
-        Utils.bitmapToMat(bitmap, imageMat);
-        Imgproc.cvtColor(imageMat,imageMat,Imgproc.COLOR_BGRA2BGR);
 
-        return imageMat;
-    }
-
-    Bitmap createBitmap(Mat imageMat){
-        Bitmap outputBitmap = Bitmap.createBitmap(imageMat.cols(), imageMat.rows(),
-                Bitmap.Config.RGB_565);
-        Utils.matToBitmap(imageMat, outputBitmap);
-        return outputBitmap;
-    }
 
     void saveImage(Bitmap bitmap, String fileName) {
         try {
