@@ -20,6 +20,7 @@ import org.opencv.core.Mat;
 import org.opencv.core.Size;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,8 +28,10 @@ public class MainActivity extends Activity {
 
 
     private ImageView imageView;
-    private ImageLoader imageLoader;
     private ImageUtil imageUtil;
+    private Uri imageUri;
+    private Bitmap bitmap;
+
 
     private Classifier tileClassifier;
     private static final int INPUT_SIZE = 64;
@@ -41,7 +44,6 @@ public class MainActivity extends Activity {
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        imageLoader = new ImageLoader(getContentResolver());
         imageUtil = new ImageUtil(getContentResolver());
 
         setContentView(R.layout.activity_capture_image);
@@ -52,8 +54,8 @@ public class MainActivity extends Activity {
                 Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
                 File photo = new File(Environment.getExternalStorageDirectory(),
                         "source_image.jpg");
-                imageLoader.setImageUri(Uri.fromFile(photo));
-                intent.putExtra(MediaStore.EXTRA_OUTPUT, imageLoader.getImageUri());
+                imageUri = Uri.fromFile(photo);
+                intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
                 startActivityForResult(intent, Request.IMAGE_CAPTURE);
             }
         });
@@ -75,8 +77,21 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == RESULT_OK) {
-            imageLoader.loadBitmap(requestCode, data);
-            launchOpenCV();
+            if(requestCode ==  Request.IMAGE_CAPTURE){
+                try {
+                    Log.i("Camera", "Opening camera");
+                    imageUtil.loadBitmapFromCamera(imageUri);
+                    launchOpenCV();
+                } catch (IOException e) {
+                    Log.e("IO", "Failed to load image from camera " + e.toString());
+                }
+            }
+            if(requestCode == Request.LOAD_IMAGE) {
+                Log.i("Gallery", "Opening gallery");
+                imageUri = data.getData();
+                bitmap = imageUtil.loadBitmapFromGallery(imageUri);
+                launchOpenCV();
+            }
         }
     }
 
@@ -125,9 +140,8 @@ public class MainActivity extends Activity {
 
 
     private List<Bitmap> imageProcessing(){
-        Bitmap warped_bitmap = imageLoader.getBitmap();
-        imageView.setImageBitmap(warped_bitmap);
-        Mat outputMat = imageUtil.createMat(warped_bitmap);
+        imageView.setImageBitmap(bitmap);
+        Mat outputMat = imageUtil.createMat(bitmap);
         List<Mat> slices = ImageProcessing.sliceMat(outputMat, size);
         List<Bitmap> bitmaps = new ArrayList<>();
         for (int i = 0; i<slices.size(); i++) {
