@@ -6,16 +6,12 @@ import android.util.Log;
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
 
-/**
- * Created by piotr on 1/19/18.
- */
+class OpenCVUtil {
 
-public class OpenCVUtil {
-
-    Context context;
+    private Context context;
     private BaseLoaderCallback mLoaderCallback;
 
-    public OpenCVUtil(Context context) {
+    OpenCVUtil(Context context) {
         this.context = context;
         mLoaderCallback = initializeLoaderCallback();
     }
@@ -39,7 +35,7 @@ public class OpenCVUtil {
         };
     }
 
-    public void loadOpenCV() {
+    void loadOpenCV() {
         if (!org.opencv.android.OpenCVLoader.initDebug()) {
             Log.d("OpenCV", "Internal OpenCV library not found. " +
                     "Using OpenCV Manager for initialization");

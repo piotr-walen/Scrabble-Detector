@@ -11,7 +11,9 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.TextView;
 
+import org.opencv.android.OpenCVLoader;
 import org.opencv.core.CvException;
 
 import java.io.File;
@@ -26,24 +28,20 @@ public class MainActivity extends Activity {
     private ImageUtil imageUtil;
     private Uri imageUri;
     private Bitmap bitmap;
-    private OpenCVUtil openCVUtil;
 
-    private Classifier tileClassifier;
-    private static final int INPUT_SIZE = 64;
-    private static final String INPUT_NAME = "conv2d_1_input";
-    private static final String OUTPUT_NAME = "dense_2/Softmax";
 
-    private static final String MODEL_FILE = "file:///android_asset/frozen_tile_classifier.pb";
-    private static final String LABEL_FILE = "file:///android_asset/tile_labels.txt";
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        openCVUtil = new OpenCVUtil(this);
+
+        OpenCVUtil openCVUtil = new OpenCVUtil(this);
         openCVUtil.loadOpenCV();
 
+        setContentView(R.layout.activity_main);
+        imageView = findViewById(R.id.source_view);
 
         imageUtil = new ImageUtil(getContentResolver());
-        setContentView(R.layout.activity_capture_image);
+        Log.i("Image util", imageUtil.toString());
         Button btnCamera = findViewById(R.id.camera_button);
         btnCamera.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -65,9 +63,20 @@ public class MainActivity extends Activity {
                 startActivityForResult(i, Request.LOAD_IMAGE);
             }
         });
-        imageView = findViewById(R.id.imageView);
 
-        loadModel();
+        Button btnLaunchWarp = findViewById(R.id.warp_button);
+        btnLaunchWarp.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                MyApplication app = (MyApplication) getApplicationContext();
+                app.setBitmap(bitmap);
+
+                Intent i = new Intent(getApplicationContext(), WarpedActivity.class);
+                startActivity(i);
+            }
+        });
+
+
     }
 
     @Override
@@ -77,8 +86,9 @@ public class MainActivity extends Activity {
             if(requestCode ==  Request.IMAGE_CAPTURE){
                 try {
                     Log.i("Camera", "Opening camera");
-                    imageUtil.loadBitmapFromCamera(imageUri);
-                    launch();
+                    bitmap = imageUtil.loadBitmapFromCamera(imageUri);
+                    imageView.setImageBitmap(bitmap);
+
                 } catch (IOException e) {
                     Log.e("IO", "Failed to load image from camera " + e.toString());
                 }
@@ -87,73 +97,10 @@ public class MainActivity extends Activity {
                 Log.i("Gallery", "Opening gallery");
                 imageUri = data.getData();
                 bitmap = imageUtil.loadBitmapFromGallery(imageUri);
-                launch();
+                imageView.setImageBitmap(bitmap);
+
+
             }
         }
     }
-
-    private void launch(){
-        try {
-            List<Bitmap> bitmaps = ImageProcessing.process(bitmap, INPUT_SIZE);
-            List<Classifier.Recognition> recognitions = recognize(bitmaps,15*3);
-            Log.i("Recognition", buildResultMatrix(recognitions));
-
-        } catch (CvException e) {
-            Log.d("Exception", e.getMessage());
-        }
-    }
-
-
-    private void loadModel() {
-        Log.i("TensorFlow", "loading model");
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    tileClassifier = TileClassifier.create(
-                            getAssets(),
-                            MODEL_FILE,
-                            LABEL_FILE,
-                            INPUT_SIZE,
-                            INPUT_NAME,
-                            OUTPUT_NAME);
-                } catch (final Exception e) {
-                    String error = "Error initializing classifiers! ";
-                    Log.e("TensorFlow", error + e.toString());
-                    throw new RuntimeException(error, e);
-                }
-            }
-        }).start();
-    }
-
-
-    private List<Classifier.Recognition> recognize(List<Bitmap> bitmaps, int batchSize) {
-        //int batchSize = 15*5;
-        List<Classifier.Recognition> recognitions = new ArrayList<>();
-        for(int i = 0; i<15*15/batchSize; i++){
-            List<Bitmap> batchOfBitmaps = bitmaps.subList(i*batchSize,i*batchSize+batchSize);
-            List<Classifier.Recognition> batchRecognition = tileClassifier.recognizeImages(batchOfBitmaps);
-            recognitions.addAll(batchRecognition);
-        }
-        return recognitions;
-    }
-
-    private String buildResultMatrix(List<Classifier.Recognition> recognitions){
-        String[][] results = new String[15][15];
-        for (int i = 0; i<15*15; i++) {
-            results[i/15][i%15] = recognitions.get(i).getId();
-        }
-
-        StringBuilder stringBuilder = new StringBuilder();
-        for (int i = 0; i<15; i++){
-            for(int j = 0; j<15; j++){
-                stringBuilder.append(results[i][j]);
-            }
-            stringBuilder.append("\n");
-        }
-        return stringBuilder.toString();
-    }
-
-
-
 }

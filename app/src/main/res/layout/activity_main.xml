@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="3dp"
+    android:weightSum="20"
+    android:orientation="vertical"
+    tools:context="com.example.piotr.scrabble_detector.MainActivity">
+
+    <ImageView
+        android:id="@+id/source_view"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="18"
+        />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="2"
+        android:orientation="horizontal">
+        <Button
+            android:id="@+id/camera_button"
+            android:layout_weight="1"
+            android:layout_gravity="bottom"
+            android:layout_height="40dp"
+            android:layout_width="match_parent"
+            android:layout_margin="1dp"
+            android:text="capture image"
+            android:background="@android:color/holo_red_dark"
+            android:textColor="@android:color/white"/>
+        <Button
+            android:id="@+id/gallery_button"
+            android:layout_weight="1"
+            android:layout_gravity="bottom"
+            android:layout_height="40dp"
+            android:layout_width="match_parent"
+            android:layout_margin="1dp"
+            android:text="Select from gallery"
+            android:background="@android:color/holo_red_dark"
+            android:textColor="@android:color/white"/>
+    </LinearLayout>
+    <Button
+        android:id="@+id/warp_button"
+        android:layout_weight="4"
+        android:layout_gravity="bottom"
+        android:layout_height="40dp"
+        android:layout_width="match_parent"
+        android:layout_margin="1dp"
+        android:text="Warp image"
+        android:background="@android:color/holo_red_dark"
+        android:textColor="@android:color/white"/>
+
+</LinearLayout>

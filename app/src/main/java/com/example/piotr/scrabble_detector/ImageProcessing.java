@@ -18,14 +18,18 @@ import java.util.List;
 
 class ImageProcessing {
 
-    static List<Bitmap> process (Bitmap bitmap, int output_size){
-//        Mat sourceMat = imageUtil.createMat(bitmap);
-//        Mat outputMat = ImageProcessing.preprocessMat(sourceMat);
-//        List<Point> corners = ImageProcessing.findCorners(outputMat);
-//        Mat warpedMat = ImageProcessing.warpMat(corners, sourceMat);
-//        Bitmap outputBitmap = imageUtil.createBitmap(warpedMat);
-//        imageUtil.saveImage(outputBitmap, "output_image");
 
+    static Bitmap warp(Bitmap bitmap){
+        Mat sourceMat = createMat(bitmap);
+        Mat outputMat = preprocessMat(sourceMat);
+        List<Point> corners = ImageProcessing.findCorners(outputMat);
+        Mat warpedMat = ImageProcessing.warpMat(corners, sourceMat);
+        return createBitmap(warpedMat);
+    }
+
+
+
+    static List<Bitmap> slice (Bitmap bitmap, int output_size){
         Mat outputMat = createMat(bitmap);
         Size size = new Size(output_size,output_size);
         List<Mat> slices = ImageProcessing.sliceMat(outputMat, size);
@@ -53,7 +57,7 @@ class ImageProcessing {
     }
 
 
-    static Mat preprocesMat(Mat sourceMat) {
+    private static Mat preprocessMat(Mat sourceMat) {
         Log.i("OpenCV", "Started bitmap processing");
 
         Mat imageMat = sourceMat.clone();
@@ -67,7 +71,7 @@ class ImageProcessing {
         return imageMat;
     }
 
-    static List<Point> findCorners(Mat preprocessedMat){
+    private static List<Point> findCorners(Mat preprocessedMat){
         List<Point> points = Collections.emptyList();
         List<MatOfPoint> contours = new ArrayList<>();
         Imgproc.findContours(preprocessedMat, contours, new Mat(), Imgproc.RETR_LIST,
@@ -168,7 +172,7 @@ class ImageProcessing {
         Mat M = Imgproc.getPerspectiveTransform(src, dst);
         Mat outputMat = new Mat();
         Imgproc.warpPerspective(sourceImageMat, outputMat, M, new Size(size, size));
-        Log.i("OpenCV", "Image has been warped");
+        Log.i("OpenCV", "Image has been WarpedActivity");
 
         return outputMat;
     }
