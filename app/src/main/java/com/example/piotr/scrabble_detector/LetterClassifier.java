@@ -119,7 +119,6 @@ public class LetterClassifier implements Classifier {
     private void feedGraph(float[] floatValues, int batchSize) {
         // Copy the input data into TensorFlow.
         inferenceInterface.feed(inputName, floatValues, batchSize, inputSize, inputSize, 3);
-        inferenceInterface.feed("dropout_1/keras_learning_phase", new boolean[]{false});
 
     }
 

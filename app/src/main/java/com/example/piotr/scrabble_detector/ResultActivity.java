@@ -8,16 +8,22 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class ResultActivity extends AppCompatActivity {
     private Classifier tileClassifier;
+    private Classifier letterClassifier;
     private static final int INPUT_SIZE = 64;
     private static final String INPUT_NAME = "conv2d_1_input";
     private static final String OUTPUT_NAME = "dense_2/Softmax";
-    private static final String MODEL_FILE = "file:///android_asset/frozen_tile_classifier.pb";
-    private static final String LABEL_FILE = "file:///android_asset/tile_labels.txt";
+    private static final String TILE_MODEL_FILE = "file:///android_asset/frozen_tile_classifier.pb";
+    private static final String TILE_LABEL_FILE = "file:///android_asset/tile_labels.txt";
+    private static final String LETTER_MODEL_FILE = "file:///android_asset/frozen_letter_classifier.pb";
+    private static final String LETTER_LABEL_FILE = "file:///android_asset/letter_labels.txt";
+
     TextView textView;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,12 +59,12 @@ public class ResultActivity extends AppCompatActivity {
             try {
                 MyApplication app = (MyApplication) getApplicationContext();
 
-                tileClassifier = TileClassifier.create(app.getAssets(), MODEL_FILE, LABEL_FILE,
+                tileClassifier = TileClassifier.create(app.getAssets(), TILE_MODEL_FILE, TILE_LABEL_FILE,
                         INPUT_SIZE, INPUT_NAME, OUTPUT_NAME);
 
-                if(tileClassifier == null){
-                    Log.e("TensorFlow", "Tile classifier is not initialized!");
-                }
+                letterClassifier = LetterClassifier.create(app.getAssets(), LETTER_MODEL_FILE, LETTER_LABEL_FILE,
+                        INPUT_SIZE, INPUT_NAME, OUTPUT_NAME);
+
             } catch (final Exception e) {
                 String error = "Error initializing classifiers! ";
                 Log.e("TensorFlow", error + e.toString());
@@ -69,13 +75,42 @@ public class ResultActivity extends AppCompatActivity {
     private void launch(){
         MyApplication app = (MyApplication) getApplicationContext();
         List<Bitmap> slices = app.getSlices();
-        List<Classifier.Recognition> recognitions = recognize(slices,15*3);
+
+        List<Classifier.Recognition> tileRecognitions = recognizeTiles(slices,15*3);
+
+        List<Bitmap> tiles = new ArrayList<>();
+        int size = slices.size();
+        for (int i = 0; i< size; i++) {
+            if(tileRecognitions.get(i).getId().equals("1")) {
+                tiles.add(slices.get(i));
+            }
+        }
+        List<Classifier.Recognition> letterRecognitions = recognizeLetter(tiles);
+        List<Classifier.Recognition> recognitions = new ArrayList<>(tileRecognitions);
+        for(int i = 0; i<size; i++) {
+            if(recognitions.get(i).getId().equals("1")){
+                recognitions.set(i,letterRecognitions.get(0));
+                letterRecognitions.remove(0);
+            }
+
+        }
+
         String result = buildResultMatrix(recognitions);
         textView.setText(result);
         Log.i("Recognition", result);
     }
 
-    private List<Classifier.Recognition> recognize(List<Bitmap> bitmaps, int batchSize) {
+
+    private List<Classifier.Recognition> recognizeLetter(List<Bitmap> bitmaps) {
+        List<Classifier.Recognition> recognitions = new ArrayList<>();
+        for(Bitmap bitmap : bitmaps){
+            Classifier.Recognition recognition = letterClassifier.recognizeImage(bitmap);
+            recognitions.add(recognition);
+        }
+        return recognitions;
+    }
+
+    private List<Classifier.Recognition> recognizeTiles(List<Bitmap> bitmaps, int batchSize) {
         //int batchSize = 15*5;
         List<Classifier.Recognition> recognitions = new ArrayList<>();
         for(int i = 0; i<15*15/batchSize; i++){
@@ -95,7 +130,12 @@ public class ResultActivity extends AppCompatActivity {
         StringBuilder stringBuilder = new StringBuilder();
         for (int i = 0; i<15; i++){
             for(int j = 0; j<15; j++){
-                stringBuilder.append(results[i][j]);
+                String result = results[i][j];
+                if(result.length() == 1){
+                    stringBuilder.append(" ");
+                }
+                stringBuilder.append(result);
+                stringBuilder.append(" ");
             }
             stringBuilder.append("\n");
         }
