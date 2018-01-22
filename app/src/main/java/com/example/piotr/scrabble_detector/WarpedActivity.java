@@ -33,7 +33,8 @@ public class WarpedActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 slice();
-
+                Intent i = new Intent(getApplicationContext(), ResultActivity.class);
+                startActivity(i);
             }
         });
 
@@ -54,8 +55,8 @@ public class WarpedActivity extends AppCompatActivity {
             MyApplication app = (MyApplication) getApplicationContext();
             Bitmap bitmap = app.getBitmap();
 
-            imageView.setImageBitmap(bitmap);
             app.setWarpedBitmap(bitmap);
+            imageView.setImageBitmap(bitmap);
 
 //            Bitmap warpedBitmap = ImageProcessing.warp(bitmap);
 //            imageView.setImageBitmap(warpedBitmap);
