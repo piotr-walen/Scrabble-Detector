@@ -59,8 +59,6 @@ public class ResultActivity extends AppCompatActivity {
                 if(tileClassifier == null){
                     Log.e("TensorFlow", "Tile classifier is not initialized!");
                 }
-
-
             } catch (final Exception e) {
                 String error = "Error initializing classifiers! ";
                 Log.e("TensorFlow", error + e.toString());
