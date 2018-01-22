@@ -50,8 +50,6 @@ public class ResultActivity extends AppCompatActivity {
                 finish();
             }
         });
-
-
     }
 
     private void loadModels() {
@@ -141,6 +139,4 @@ public class ResultActivity extends AppCompatActivity {
         }
         return stringBuilder.toString();
     }
-
-
 }
