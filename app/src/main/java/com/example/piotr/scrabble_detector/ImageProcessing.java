@@ -149,7 +149,7 @@ class ImageProcessing {
         Collections.sort(points,new Comparator<Point>() {
             @Override
             public int compare(Point p1, Point p2) {
-                return (int) (-calculateAngle(center,p1) + calculateAngle(center,p2));
+                return (int) (calculateAngle(center,p2) - calculateAngle(center,p1));
             }
         });
 

@@ -54,31 +54,6 @@ public class ImageProcessingTest {
         ImageProcessing.sortPointsClockwise(null);
     }
 
-    @Test
-    public void sortPointClockwise_OnePointIsPassed() {
-        List<Point> points = Collections.singletonList(new Point(-1, 10));
-        assertThat(ImageProcessing.sortPointsClockwise(points), equalTo(points));
-    }
-
-
-    @Test
-    public void sortPointClockwise_ValidPointListIsPassed() {
-        List<Point> input = Arrays.asList(
-                new Point(-1, -1),
-                new Point(1, -1),
-                new Point(0, 2)
-        );
-
-        List<Point> expected = Arrays.asList(
-                new Point(0, 2),
-                new Point(-1, -1),
-                new Point(1, -1)
-        );
-
-        assertThat(ImageProcessing.sortPointsClockwise(input), equalTo(expected));
-
-    }
-
 
     @Test
     public void calculateAngle_whenNullIsPassed() {
@@ -88,11 +63,11 @@ public class ImageProcessingTest {
     }
 
     private static Object[] calculateAngleTestData() {
-        return new Object[] {
-                new Object[] {new Point(0,0), new Point(1,1), 45.0},
-                new Object[] {new Point(0,0), new Point(-1,-1), 225.0},
-                new Object[] {new Point(0,0), new Point(0,0), 0.0},
-                new Object[] {new Point(0,0), new Point(1,-1), 315.0},
+        return new Object[]{
+                new Object[]{new Point(0, 0), new Point(1, 1), 45.0},
+                new Object[]{new Point(0, 0), new Point(-1, -1), 225.0},
+                new Object[]{new Point(0, 0), new Point(0, 0), 0.0},
+                new Object[]{new Point(0, 0), new Point(1, -1), 315.0},
         };
     }
 
@@ -100,6 +75,40 @@ public class ImageProcessingTest {
     @Parameters(method = "calculateAngleTestData")
     public void calculateAngle_whenValidPointsArePassed(Point p1, Point p2, double expected) {
         assertThat(ImageProcessing.calculateAngle(p1, p2), equalTo(expected));
+    }
+
+    private static Object[] sortPointsClockwiseTestData() {
+        return new Object[]{
+                new List[]{
+                        Arrays.asList(new Point(-1, -1)),
+                        Arrays.asList(new Point(-1, -1))
+                },
+
+                new List[]{
+                        Arrays.asList(new Point(0, 3), new Point(1, -1)),
+                        Arrays.asList(new Point(1, -1), new Point(0, 3))
+                },
+
+                new List[]{
+                        Arrays.asList(new Point(-1, -1), new Point(0, 3),
+                                new Point(1, -1)),
+                        Arrays.asList(new Point(1, -1), new Point(-1, -1),
+                                new Point(0, 3))
+                },
+
+                new List[]{
+                        Arrays.asList(new Point(-1, -1), new Point(1, 1),
+                                new Point(0, 2), new Point(1, -1)),
+                        Arrays.asList(new Point(1, -1), new Point(-1, -1),
+                                new Point(0, 2), new Point(1, 1))
+                },
+        };
+    }
+
+    @Test
+    @Parameters(method = "sortPointsClockwiseTestData")
+    public void sortPointsClockwise_ValidPointsListIsPassed(List<Point> input, List<Point> expected) {
+        assertThat(ImageProcessing.sortPointsClockwise(input), equalTo(expected));
     }
 
 
