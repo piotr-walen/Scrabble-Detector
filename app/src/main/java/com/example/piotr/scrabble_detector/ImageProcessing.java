@@ -41,7 +41,7 @@ class ImageProcessing {
         return bitmaps;
     }
 
-    private static Mat createMat(Bitmap bitmap){
+    static Mat createMat(Bitmap bitmap){
         Mat imageMat = new Mat();
         Utils.bitmapToMat(bitmap, imageMat);
         Imgproc.cvtColor(imageMat,imageMat,Imgproc.COLOR_BGRA2BGR);
@@ -49,7 +49,7 @@ class ImageProcessing {
         return imageMat;
     }
 
-    private static Bitmap createBitmap(Mat imageMat){
+    static Bitmap createBitmap(Mat imageMat){
         Bitmap outputBitmap = Bitmap.createBitmap(imageMat.cols(), imageMat.rows(),
                 Bitmap.Config.RGB_565);
         Utils.matToBitmap(imageMat, outputBitmap);
@@ -57,7 +57,7 @@ class ImageProcessing {
     }
 
 
-    private static Mat preprocessMat(Mat sourceMat) {
+    static Mat preprocessMat(Mat sourceMat) {
         Log.i("OpenCV", "Started bitmap processing");
 
         Mat imageMat = sourceMat.clone();
@@ -71,7 +71,7 @@ class ImageProcessing {
         return imageMat;
     }
 
-    private static List<Point> findCorners(Mat preprocessedMat){
+    static List<Point> findCorners(Mat preprocessedMat){
         List<Point> points = Collections.emptyList();
         List<MatOfPoint> contours = new ArrayList<>();
         Imgproc.findContours(preprocessedMat, contours, new Mat(), Imgproc.RETR_LIST,
@@ -99,7 +99,7 @@ class ImageProcessing {
         return points;
     }
 
-    private static MatOfPoint findMaxAreaContour(List<MatOfPoint> contours) {
+    static MatOfPoint findMaxAreaContour(List<MatOfPoint> contours) {
         MatOfPoint contour = contours.get(0);
         for (MatOfPoint c : contours) {
             if (Imgproc.contourArea(c) > Imgproc.contourArea(contour)) {
@@ -109,7 +109,7 @@ class ImageProcessing {
         return contour;
     }
 
-    private static MatOfPoint squareContour(MatOfPoint contour) {
+    static MatOfPoint squareContour(MatOfPoint contour) {
         MatOfPoint2f contour2f = new MatOfPoint2f();
         contour.convertTo(contour2f, CvType.CV_32FC2);
         double epsilon = 0.03 * Imgproc.arcLength(contour2f, true);
@@ -121,7 +121,10 @@ class ImageProcessing {
         return approxContour;
     }
 
-    private static Point findCenterPoint(List<Point> points) {
+    static Point findCenterPoint(List<Point> points) throws IllegalArgumentException {
+        if(points == null) {
+            throw new IllegalArgumentException("method argument cannot be null");
+        }
         int sumX = 0;
         int sumY = 0;
         int n = points.size();
@@ -132,7 +135,7 @@ class ImageProcessing {
         return new Point(sumX / n, sumY / n);
     }
 
-    private static List<Point> sortPointsClockwise(List<Point> points) {
+    static List<Point> sortPointsClockwise(List<Point> points) {
         Point centerPoint = findCenterPoint(points);
         double x_center = centerPoint.x;
         double y_center = centerPoint.y;
@@ -155,7 +158,7 @@ class ImageProcessing {
         return sortedPoints;
     }
 
-    private static Mat warpMat(List<Point> sortedPoints, Mat sourceImageMat) {
+    static Mat warpMat(List<Point> sortedPoints, Mat sourceImageMat) {
         MatOfPoint2f src = new MatOfPoint2f();
         src.fromList(sortedPoints);
         Log.i("OpenCV", "warping... source points = " + src.toString());
@@ -177,7 +180,7 @@ class ImageProcessing {
         return outputMat;
     }
 
-    private static ArrayList<Mat> sliceMat(Mat image, Size size) {
+    static ArrayList<Mat> sliceMat(Mat image, Size size) {
         Log.i("OpenCV", "image " + image.toString());
         ArrayList<Mat> slices = new ArrayList<>();
         int width = image.width();
