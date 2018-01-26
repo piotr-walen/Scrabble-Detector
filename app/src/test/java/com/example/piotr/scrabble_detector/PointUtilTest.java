@@ -18,11 +18,11 @@ import junitparams.Parameters;
 
 
 @RunWith(JUnitParamsRunner.class)
-public class ImageProcessingTest {
+public class PointUtilTest {
     @Test
     public void findCenter_ListWithOnePointIsPassed() {
         Point expected = new Point(-20, 10);
-        Point actual = ImageProcessing.findCenterPoint(Collections.singletonList(expected));
+        Point actual = PointUtil.findCenterPoint(Collections.singletonList(expected));
         assertThat(actual, equalTo(expected));
     }
 
@@ -33,7 +33,7 @@ public class ImageProcessingTest {
                 new Point(-2, 10)
         );
         Point expected = new Point(-6, 5);
-        Point actual = ImageProcessing.findCenterPoint(points);
+        Point actual = PointUtil.findCenterPoint(points);
         assertThat(actual, equalTo(expected));
     }
 
@@ -44,14 +44,14 @@ public class ImageProcessingTest {
     public void findCenter_NullIsPassed() {
         exception.expect(IllegalArgumentException.class);
         exception.expectMessage("Method argument cannot be null");
-        ImageProcessing.findCenterPoint(null);
+        PointUtil.findCenterPoint(null);
     }
 
     @Test
     public void sortPointsClockwise_NullIsPassed() {
         exception.expect(IllegalArgumentException.class);
         exception.expectMessage("Method argument cannot be null");
-        ImageProcessing.sortPointsClockwise(null);
+        PointUtil.sortPointsClockwise(null);
     }
 
 
@@ -59,7 +59,7 @@ public class ImageProcessingTest {
     public void calculateAngle_whenNullIsPassed() {
         exception.expect(IllegalArgumentException.class);
         exception.expectMessage("Method argument cannot be null");
-        ImageProcessing.calculateAngle(null, new Point(2, 1));
+        PointUtil.calculateAngle(null, new Point(2, 1));
     }
 
     private static Object[] calculateAngleTestData() {
@@ -67,14 +67,14 @@ public class ImageProcessingTest {
                 new Object[]{new Point(0, 0), new Point(1, 1), 45.0},
                 new Object[]{new Point(0, 0), new Point(-1, -1), 225.0},
                 new Object[]{new Point(0, 0), new Point(0, 0), 0.0},
-                new Object[]{new Point(0, 0), new Point(1, -1), 315.0},
+                new Object[]{new Point(0, 0), new Point(1, -1), 315.0}
         };
     }
 
     @Test
     @Parameters(method = "calculateAngleTestData")
     public void calculateAngle_whenValidPointsArePassed(Point p1, Point p2, double expected) {
-        assertThat(ImageProcessing.calculateAngle(p1, p2), equalTo(expected));
+        assertThat(PointUtil.calculateAngle(p1, p2), equalTo(expected));
     }
 
     private static Object[] sortPointsClockwiseTestData() {
@@ -108,7 +108,7 @@ public class ImageProcessingTest {
     @Test
     @Parameters(method = "sortPointsClockwiseTestData")
     public void sortPointsClockwise_ValidPointsListIsPassed(List<Point> input, List<Point> expected) {
-        assertThat(ImageProcessing.sortPointsClockwise(input), equalTo(expected));
+        assertThat(PointUtil.sortPointsClockwise(input), equalTo(expected));
     }
 
 

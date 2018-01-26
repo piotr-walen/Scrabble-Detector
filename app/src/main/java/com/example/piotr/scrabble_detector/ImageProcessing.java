@@ -85,9 +85,9 @@ class ImageProcessing {
             Log.i("OpenCV", "number of points = " + Integer.toString(points.size()));
 
             if (points.size() == 4) {
-                Point middlePoint = findCenterPoint(points);
+                Point middlePoint = PointUtil.findCenterPoint(points);
                 Log.i("OpenCV", "middle point = " + middlePoint.toString());
-                points = sortPointsClockwise(points);
+                points = PointUtil.sortPointsClockwise(points);
                 Log.i("OpenCV", "sorted points = " + points.toString());
 
             } else {
@@ -101,13 +101,12 @@ class ImageProcessing {
     }
 
     static MatOfPoint findMaxAreaContour(List<MatOfPoint> contours) {
-        MatOfPoint contour = contours.get(0);
-        for (MatOfPoint c : contours) {
-            if (Imgproc.contourArea(c) > Imgproc.contourArea(contour)) {
-                contour = c;
+        return Collections.max(contours, new Comparator<MatOfPoint>() {
+            @Override
+            public int compare(MatOfPoint c1, MatOfPoint c2) {
+                return (int) (Imgproc.contourArea(c1) - Imgproc.contourArea(c2));
             }
-        }
-        return contour;
+        });
     }
 
     static MatOfPoint squareContour(MatOfPoint contour) {
@@ -122,47 +121,6 @@ class ImageProcessing {
         return approxContour;
     }
 
-    static Point findCenterPoint(List<Point> points) throws IllegalArgumentException {
-        if (points == null) {
-            throw new IllegalArgumentException("Method argument cannot be null");
-        }
-        int sumX = 0;
-        int sumY = 0;
-        int n = points.size();
-        for (Point point : points) {
-            sumX += point.x;
-            sumY += point.y;
-        }
-        return new Point(sumX / n, sumY / n);
-    }
-
-    static List<Point> sortPointsClockwise(List<Point> points) throws IllegalArgumentException {
-        if (points == null) {
-            throw new IllegalArgumentException("Method argument cannot be null");
-        }
-        if (points.size() == 1) {
-            return points;
-        }
-
-        final Point center = findCenterPoint(points);
-
-        Collections.sort(points,new Comparator<Point>() {
-            @Override
-            public int compare(Point p1, Point p2) {
-                return (int) (calculateAngle(center,p2) - calculateAngle(center,p1));
-            }
-        });
-
-        return points;
-    }
-
-    static double calculateAngle(Point p1, Point p2) throws IllegalArgumentException{
-        if (p1 == null || p2 == null) {
-            throw new IllegalArgumentException("Method argument cannot be null");
-        }
-        double angle = Math.toDegrees(Math.atan2(p2.y - p1.y, p2.x - p1.x));
-        return angle >= 0 ? angle : angle + 360.0;
-    }
 
     static Mat warpMat(List<Point> sortedPoints, Mat sourceImageMat) {
         MatOfPoint2f src = new MatOfPoint2f();
