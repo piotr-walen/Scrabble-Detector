@@ -94,10 +94,13 @@ def slice_image(image):
 
 def get_slices(image_path):
     img = cv2.imread(image_path)
+    
     contour_img, cnt = get_contour(img)
     pts, size = get_points(cnt)
     board = warp_image(img, pts, size)
     warped_img = board[..., ::-1]
+    
+    plt.figure(figsize = (6,6), dpi = 100)
     plt.imshow(warped_img)
     plt.show()
     slices = slice_image(warped_img)

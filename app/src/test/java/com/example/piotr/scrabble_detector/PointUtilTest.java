@@ -56,7 +56,7 @@ public class PointUtilTest {
 
 
     @Test
-    public void calculateAngle_whenNullIsPassed() {
+    public void calculateAngle_NullIsPassed() {
         exception.expect(IllegalArgumentException.class);
         exception.expectMessage("Method argument cannot be null");
         PointUtil.calculateAngle(null, new Point(2, 1));
@@ -73,7 +73,7 @@ public class PointUtilTest {
 
     @Test
     @Parameters(method = "calculateAngleTestData")
-    public void calculateAngle_whenValidPointsArePassed(Point p1, Point p2, double expected) {
+    public void calculateAngle_ValidPointsArePassed(Point p1, Point p2, double expected) {
         assertThat(PointUtil.calculateAngle(p1, p2), equalTo(expected));
     }
 

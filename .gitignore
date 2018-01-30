@@ -189,9 +189,10 @@ gradlew.bat
 local.properties
 settings.gradle
 import-summary.txt
-openCVLibrary300/
+openCVLibrary330/
 app/src/androidTest
 app/src/main/assets/
+app/src/main/jniLibs
 app/libs
 app/src/main/res/mipmap-hdpi/
 app/src/main/res/mipmap-mdpi/
