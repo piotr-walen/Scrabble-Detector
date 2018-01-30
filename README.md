@@ -7,5 +7,5 @@ Application detects game board and tiles with letter, using OpenCV image process
 </p>
 <p align="center">
   Detected board:
-  <img src="python/screenshots/outputNN.jpg" width="200"/>
+  <img src="python/screenshots/outputNN.png" width="200"/>
 </p>
