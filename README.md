@@ -1,8 +1,7 @@
 # Scrabble-Detector
-Automatic point counting system for Scrabble game 
-Used technologies: Python, Keras, Tensorflow, OpenCV, Android, JUnit
-
-Application detects game board and tiles with letter, using OpenCV image processing library, then classifies each tile with two convolutional neural networks built in Keras, and finally counts points for each player turn.
+<h2> Automatic point counting system for Scrabble game </h2>  
+<h3> Used technologies: Python, Keras, Tensorflow, OpenCV, Android, JUnit <h3>
+<p> Application detects game board and tiles with letter, using OpenCV image processing library, then classifies each tile with two convolutional neural networks built in Keras, and finally counts points for each player turn. </p>
 <p align="center">
   Input image:
   <br>
