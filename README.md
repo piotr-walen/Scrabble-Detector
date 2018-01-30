@@ -8,7 +8,7 @@
   <img src="python/screenshots/input.jpg" width="350"/>
 </p>
 <p align="center">
-  Detected board with recognized letters (console output):
+  Board with recognized letters (console output):
   <br>
   <img src="python/screenshots/outputNN.png" width="350"/>
 </p>
